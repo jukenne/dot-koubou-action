@@ -14,7 +14,7 @@ DK.config = {
   PALETTE: ["#1a1c2c", "#f4f4f4", "#e63946", "#f4a261", "#ffd166", "#52b788", "#4895ef", "#8d99ae"]
 };
 
-DK.screens = ["home", "parts", "stage", "play"];
+DK.screens = ["home", "parts", "stage", "play", "multi"];
 
 DK.showScreen = function (name) {
   if (DK.screens.indexOf(name) < 0) name = "home";

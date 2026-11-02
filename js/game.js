@@ -29,7 +29,14 @@ window.DK = window.DK || {};
     WALL_LOCK: 10,       // 壁キック直後、横の入力が効きにくいフレーム数（すぐ壁に戻ってしまわないように）
     WALL_LOCK_ACCEL: 0.3,// そのあいだの加速の倍率
     PUSH_MAX: 1.0,       // 木箱を押しているときの最高速度（重たい感じ）
-    SQUEEZE_MAX: 10      // 動く部品に押されたとき、押し出して避けられる最大ドット数（これ以上は潰される）
+    SQUEEZE_MAX: 10,     // 動く部品に押されたとき、押し出して避けられる最大ドット数（これ以上は潰される）
+    STOMP_MIN: 2.4,      // 他の人の頭に着地したとき、これ以上の落下速度なら「踏みつけ」
+    STOMP_V: 5.0,        // 踏みつけで跳ね返る初速（ジャンプを押していなければ約2マス）
+    STOMP_V_HELD: 7.0,   // ジャンプを押しながら踏むと、ほぼフルジャンプで跳ねる
+    STOMP_COOLDOWN: 30,  // 同じ相手を続けて踏める間隔（フレーム）
+    STOMP_SLOW: 18,      // 踏まれた人が鈍るフレーム数（0.3秒）
+    STOMP_SLOW_RUN: 0.5, // そのあいだの最高速度の倍率
+    STOMP_SLOW_ACCEL: 0.6 // そのあいだの加速の倍率
   };
   DK.physics = P;
 
@@ -38,7 +45,8 @@ window.DK = window.DK || {};
   DK.time = 0;   // 今の挑戦が始まってからのフレーム数
 
   // 動く部品は、経過フレーム DK.time だけで位置・角度が決まる
-  function setClock(t) { DK.time = t; }
+  // みんなで遊ぶときは DK.clockFn（全員で共通の時計）が時間を決める。ふだん（1人用）は引数のとおり
+  function setClock(t) { DK.time = DK.clockFn ? DK.clockFn(t, DK.time) : t; }
 
   // ドット (px, py)（整数）に重なっている部品の効果のビット（EFFECT_BIT の和）
   function effectsAt(px, py, skipCrates) {
@@ -82,6 +90,7 @@ window.DK = window.DK || {};
       DK.crates.push({ part: part, x: d.x * T, y: d.y * T, vy: 0, fall: 0, cdx: 0, cdy: 0, bx: x0, by: y0, bw: x1 - x0 + 1, bh: y1 - y0 + 1, dead: false });
     });
   }
+  DK.makeCrates = makeCrates;
   function cl(c) { return c.x + c.bx; }
   function ct(c) { return c.y + c.by; }
   // ドット (px, py) の中心が箱の長方形に入っているか
@@ -135,6 +144,11 @@ window.DK = window.DK || {};
       // 押している最中の「ぴったり接している」状態を邪魔と思わないよう、少し甘く見る
       if (overlap(l, t, c.bw, c.bh, px + HB.x + 0.6, py + HB.y + 0.6, HB.w - 1.2, HB.h - 1.2)) return true;
     }
+    var bs = DK.bodies;                    // 他の人（みんなで遊ぶとき）。箱は他の人の体も通り抜けない
+    if (bs) for (i = 0; i < bs.length; i++) {
+      var b = bs[i];
+      if (!b.m && overlap(l, t, c.bw, c.bh, b.x + HB.x + 0.6, b.y + HB.y + 0.6, HB.w - 1.2, HB.h - 1.2)) return true;
+    }
     return false;
   }
   // 箱 b が箱 a の真上に乗っているか
@@ -156,13 +170,14 @@ window.DK = window.DK || {};
         if (!o.dead && group.indexOf(o) < 0 && (restsOn(o, group[i]) || nextTo(o, group[i], step))) group.push(o);
       }
     }
+    if (DK.crateNet && DK.crateNet.active && !DK.crateNet.gate(group)) return false;   // みんなで遊ぶとき：箱の持ち主でなければ（権利が取れるまで）動かせない
     for (i = 0; i < group.length; i++) if (crateBlocked(group[i], group[i].x + step, group[i].y, group, px, py)) return false;
     group.forEach(function (c) { c.x += step; });
     return true;
   }
   // 重力で落とす（下の箱から先に）。穴に落ちた箱は消える
   function updateCrates() {
-    var p = DK.player, order = DK.crates.filter(function (c) { return !c.dead; })
+    var p = DK.player, order = DK.crates.filter(function (c) { return !c.dead && !c.net; })      // c.net＝他の人が持ち主の箱（位置は受信して追従する）
       .sort(function (a, b) { return (ct(b) + b.bh) - (ct(a) + a.bh); });
     order.forEach(function (c) {
       c.vy = Math.min(c.vy + P.GRAVITY, P.FALL_MAX);
@@ -182,7 +197,7 @@ window.DK = window.DK || {};
     var out = [], movers = DK.stage.movers;
     if (!movers.length) return out;
     DK.crates.forEach(function (c) {
-      if (c.dead) return;
+      if (c.dead || c.net) return;
       var row = Math.ceil(ct(c) + c.bh - 0.5), i0 = Math.ceil(cl(c) - 0.5), i1 = Math.ceil(cl(c) + c.bw - 0.5) - 1, k, i;
       for (k = i0; ; k = Math.min(k + 4, i1)) {
         for (i = 0; i < movers.length; i++) {
@@ -229,7 +244,7 @@ window.DK = window.DK || {};
   // 動く部品にめり込まれた箱は、近い空きへ押し出す。逃げ場がなければ消える
   function unstickCrates() {
     DK.crates.forEach(function (c) {
-      if (c.dead || !crateHitsWorld(c, c.x, c.y)) return;
+      if (c.dead || c.net || !crateHitsWorld(c, c.x, c.y)) return;
       for (var k = 1; k <= P.SQUEEZE_MAX; k++) {
         var tries = [[0, -k], [k, 0], [-k, 0]];
         for (var i = 0; i < tries.length; i++) {
@@ -268,6 +283,60 @@ window.DK = window.DK || {};
     return bits;
   }
 
+  // ---- 他のプレイヤー（みんなで遊ぶとき。DK.bodies は multi.js が毎フレーム更新する [{n,x,y,dx,dy,m}]）----
+  // 体は自分と同じ大きさ(HB)の箱。ミス中・ゴール後の人（m≠0）には当たらない。
+  // 「いま重なっている相手」は邪魔しない（ラウンドの開始やラグで重なっても動けなくならないように）。押し合いはしない（ぶつかって止まるだけ）
+  function hitsBody(x, y, b) { return overlap(x + HB.x, y + HB.y, HB.w, HB.h, b.x + HB.x, b.y + HB.y, HB.w, HB.h); }
+  // 横に動くとき、すでに重なっている相手でも「もっと深く入る」動きは止める（離れる動きは通す）。
+  // 相手は0.1秒前の位置で見えているので、向かい合って走ると相手の過去の位置が自分に追いついて重なる。
+  // そのとき「重なっている相手は邪魔しない」だけだと、そのまま通り抜けてしまう（実機テストで発覚）。
+  // 横の重なりが浅い（頭に乗った直後など、上から見て3ドット未満）ときは、通り道をふさがない
+  function playerBlock(p, nx, ny, axis) {
+    var bs = DK.bodies;
+    if (!bs) return null;
+    for (var i = 0; i < bs.length; i++) {
+      var b0 = bs[i];
+      if (b0.m) continue;
+      var b = axis === "x" && b0.ax !== undefined ? { x: b0.ax, y: b0.y } : b0;     // 横の動きは、相手の「いまの位置の予想」にぶつかる
+      if (!hitsBody(nx, ny, b)) continue;
+      if (!hitsBody(p.x, p.y, b)) return b0;
+      if (axis === "x") {
+        var oy = Math.min(p.y + HB.y + HB.h, b.y + HB.y + HB.h) - Math.max(p.y + HB.y, b.y + HB.y);
+        if (oy >= 3 && Math.abs(nx - b.x) < Math.abs(p.x - b.x)) return b0;     // 中心どうしが近づく動き → 止める
+      }
+    }
+    return null;
+  }
+  function standingBody(p) {      // 足の下にいる他の人
+    var bs = DK.bodies;
+    if (!bs) return null;
+    for (var i = 0; i < bs.length; i++) { var b = bs[i]; if (!b.m && hitsBody(p.x, p.y + 1, b) && !hitsBody(p.x, p.y, b)) return b; }
+    return null;
+  }
+  function bodyByN(n) {
+    var bs = DK.bodies || [];
+    for (var i = 0; i < bs.length; i++) if (bs[i].n === n) return bs[i];
+    return null;
+  }
+  // 重なってしまったときの押し分け：頭にめり込んだら持ち上げ、横に重なったら左右へ少しずつ離す（毎フレーム、両方の画面で同じ向きに働く）
+  function separate(p) {
+    var bs = DK.bodies;
+    if (!bs) return;
+    for (var i = 0; i < bs.length; i++) {
+      var b = bs[i];
+      if (b.m || !hitsBody(p.x, p.y, b)) continue;
+      var ox = Math.min(p.x + HB.x + HB.w, b.x + HB.x + HB.w) - Math.max(p.x + HB.x, b.x + HB.x);
+      var oy = Math.min(p.y + HB.y + HB.h, b.y + HB.y + HB.h) - Math.max(p.y + HB.y, b.y + HB.y);
+      if (oy <= ox) {
+        if (p.y < b.y && !collides(p.x, p.y - 1)) { p.y -= 1; if (p.vy > 0) p.vy = 0; }   // 相手の頭の上にめり込んだ → 持ち上げる（下にめり込まれた側は相手が持ち上がる）
+      } else {
+        var d = (p.x + HB.w / 2) - (b.x + HB.w / 2);
+        moveAxis(p, (d > 0 ? 1 : d < 0 ? -1 : (DK.myN < b.n ? -1 : 1)) * 0.5, "x");      // ぴったり重なっているときは、番号の小さい人が左へ
+      }
+    }
+  }
+  var stepCount = 0, stompHit = null, stompCool = {};
+
   DK.deaths = 0;
   DK.mode = "play";        // "play"（遊び中）/ "dead"（ミス演出中）/ "clear"（クリア）
   DK.modeTimer = 0;
@@ -283,7 +352,7 @@ window.DK = window.DK || {};
       onGround: false, facing: 1, coyote: 0, buffer: 0, cutArmed: false, anim: 0,
       wallDir: 0, wallGrace: 0, lock: 0, clinging: false, kickBan: 0
     };
-    makeCrates();    // 木箱は最初の位置に戻る
+    if (!(DK.crateNet && DK.crateNet.active && DK.crates.length)) makeCrates();    // 木箱は最初の位置に戻る（みんなで遊ぶときは共有物なので、ミスしても戻らない）
     DK.cam = null;   // カメラは次の描画でプレイヤーに合わせて置き直す
   };
   DK.respawn();
@@ -295,6 +364,7 @@ window.DK = window.DK || {};
     DK.stage = DK.makeStage({ title: data.title, h: data.h, start: { x: data.start.x, y: data.start.y }, cells: data.cells.slice(), timeLimit: data.timeLimit });
     DK.deaths = 0;
     DK.keys = {};
+    DK.crates = [];
     DK.respawn();
     document.getElementById("play-back").style.display = from === "stage" ? "inline-block" : "none";
     DK.showScreen("play");
@@ -319,6 +389,9 @@ window.DK = window.DK || {};
     if (DK.playOpts && DK.playOpts.onClear) DK.playOpts.onClear(DK.clearInfo);
   };
 
+  // 他の人に踏まれた：しばらく動きが鈍る（ミス中・ゴール後は無視）
+  DK.stomped = function () { if (DK.mode === "play" && DK.player) DK.player.slow = P.STOMP_SLOW; };
+
   // ---- 入力 ----
   DK.keys = {};
   var prevJump = false;
@@ -329,7 +402,7 @@ window.DK = window.DK || {};
     e.preventDefault();
     if (document.activeElement && document.activeElement.blur && document.activeElement !== document.body) document.activeElement.blur();   // スペースでボタンが押されないように
     DK.keys[e.code] = true;
-    if (e.code === "KeyR" && !e.repeat) {
+    if (e.code === "KeyR" && !e.repeat && !(DK.noRestart && DK.mode === "clear")) {      // 対戦中、ゴールしたあとはやり直せない（ほかの人に当たってしまうため）
       if (DK.mode === "clear") DK.deaths = 0;        // クリア後のRは最初からやり直し
       else if (DK.mode === "play") DK.deaths++;       // 遊び中のRは失敗に数える
       DK.respawn();
@@ -343,6 +416,8 @@ window.DK = window.DK || {};
     while (amount !== 0) {
       var step = Math.abs(amount) >= 1 ? (amount > 0 ? 1 : -1) : amount;
       var nx = axis === "x" ? p.x + step : p.x, ny = axis === "y" ? p.y + step : p.y;
+      var pb = playerBlock(p, nx, ny, axis);                // 他の人の体にぶつかるなら、そこで止まる
+      if (pb) { if (axis === "y" && step > 0 && p.vy >= P.STOMP_MIN) stompHit = pb; return true; }   // 速く落ちて頭に着地 → 踏みつけ（このあと update で処理）
       if (collides(nx, ny)) {
         // 地上で横から木箱に当たったら、押す（世界の壁にも挟まれているときは押せない）
         if (axis === "x" && p.onGround && !collides(nx, ny, true)) {
@@ -394,7 +469,11 @@ window.DK = window.DK || {};
   }
 
   DK.update = function () {
+    if (DK.freeze) return;      // 対戦のカウントダウン中・結果表示中は動かない
     var k = DK.keys, p = DK.player;
+    stepCount++; stompHit = null;
+    var standOn = standingBody(p);                       // 動く前に足の下にいた他の人（その人が動いたら、いっしょに運ばれる）
+    if (DK.stepOthers) DK.stepOthers();                  // 他の人の位置を1フレーム進める（みんなで遊ぶとき）
 
     if (DK.mode === "dead") {                    // ミス演出：跳ねて落ちて、時間が来たらやり直し
       setClock(DK.time + 1);
@@ -418,6 +497,7 @@ window.DK = window.DK || {};
       var from = DK.traceForward(r.tr, r.t0), to = DK.traceForward(r.tr, DK.time);
       if (to.x - from.x || to.y - from.y) shiftCrates(r.c, to.x - from.x, to.y - from.y);
     });
+    if (DK.crateNet && DK.crateNet.active) DK.crateNet.step();   // 他の人が持ち主の箱を、受け取った位置へ動かす（cdx, cdy も残る）
     if (standCrate && (standCrate.cdx || standCrate.cdy)) {   // 運ばれる箱に乗っているプレイヤーも、いっしょに運ぶ
       if (standCrate.cdx) moveAxis(p, standCrate.cdx, "x");
       if (standCrate.cdy) moveAxis(p, standCrate.cdy, "y");
@@ -428,8 +508,13 @@ window.DK = window.DK || {};
       if (dx) moveAxis(p, dx, "x");
       if (dy) moveAxis(p, dy, "y");
     }
+    if (standOn) {                                       // 他の人の頭に乗っている：その人の動きぶん運ぶ
+      var nb = bodyByN(standOn.n);
+      if (nb && !nb.m) { if (nb.dx) moveAxis(p, nb.dx, "x"); if (nb.dy) moveAxis(p, nb.dy, "y"); }
+    }
     unstickCrates();
     if (!unstick(p)) { DK.die(); return; }
+    separate(p);
 
     var dir = (right ? 1 : 0) - (left ? 1 : 0);
 
@@ -439,6 +524,8 @@ window.DK = window.DK || {};
     p.clinging = !!wallDir && dir === wallDir && p.vy >= 0;
     if (wallDir) { p.wallDir = wallDir; p.wallGrace = P.WALL_COYOTE; } else p.wallGrace = Math.max(0, p.wallGrace - 1);
     if (p.lock > 0) p.lock--;
+    var slowed = p.slow > 0;                             // 踏まれて鈍っている間
+    if (slowed) p.slow--;
     // 同じ側の壁を続けてキックすることはできない（反対側の壁に触れるか、着地するとまた蹴れる）。左右の壁の間を交互に登る形になる
     if (p.onGround || (wallDir && wallDir === -p.kickBan)) p.kickBan = 0;
 
@@ -446,8 +533,10 @@ window.DK = window.DK || {};
       var a = p.onGround ? P.ACCEL_GROUND : P.ACCEL_AIR;
       if (p.vx * dir < 0) a *= P.TURN_BONUS;
       if (p.lock > 0) a *= P.WALL_LOCK_ACCEL;
+      if (slowed) a *= P.STOMP_SLOW_ACCEL;
       p.vx += dir * a;
-      if (Math.abs(p.vx) > P.RUN_MAX) p.vx = dir * P.RUN_MAX;
+      var runMax = slowed ? P.RUN_MAX * P.STOMP_SLOW_RUN : P.RUN_MAX;
+      if (Math.abs(p.vx) > runMax) p.vx = dir * runMax;
       if (p.lock <= 0) p.facing = dir;
     } else {
       var f = p.onGround ? P.FRICTION_GROUND : P.FRICTION_AIR;
@@ -481,7 +570,16 @@ window.DK = window.DK || {};
     }
     if (moveAxis(p, p.vx, "x")) p.vx = 0;
     if (moveAxis(p, p.vy, "y")) p.vy = 0;
-    p.onGround = p.vy >= 0 && collides(p.x, p.y + 1);
+    if (stompHit) {                                      // 踏みつけ：跳ね返り、相手には「踏まれた」を知らせる
+      var sb = stompHit; stompHit = null;
+      if (stepCount - (stompCool[sb.n] === undefined ? -99 : stompCool[sb.n]) > P.STOMP_COOLDOWN) {
+        stompCool[sb.n] = stepCount;
+        p.vy = -(jumpHeld ? P.STOMP_V_HELD : P.STOMP_V); p.cutArmed = jumpHeld; p.buffer = 0;
+        if (DK.sound) DK.sound.play("jump");
+        if (DK.onStomp) DK.onStomp(sb.n);
+      }
+    }
+    p.onGround = p.vy >= 0 && (collides(p.x, p.y + 1) || !!standingBody(p));
     updateCrates();
 
     // 歩きアニメ
@@ -540,6 +638,10 @@ window.DK = window.DK || {};
     return Math.round(DK.cam.y);
   }
 
+  // いまのキャラのコマ（"idle" / "walk" / "cling"）
+  function playerFrameName(p) { return p.clinging ? "cling" : (p.onGround && p.vx !== 0 && ((p.anim >> 3) & 1)) || !p.onGround ? "walk" : "idle"; }
+  DK.playerFrameName = playerFrameName;
+
   DK.render = function () {
     var canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
     var p = DK.player, s = DK.stage;
@@ -563,11 +665,16 @@ window.DK = window.DK || {};
       if (!c.dead) ctx.drawImage(DK.partCanvas(c.part), Math.round(c.x) - cx, Math.round(c.y) - cy);
     });
 
-    var frame = p.clinging ? "cling" : (p.onGround && p.vx !== 0 && ((p.anim >> 3) & 1)) || !p.onGround ? "walk" : "idle";
-    DK.drawPixels(ctx, DK.playerFrames[frame], Math.round(p.x) - cx, Math.round(p.y) - cy, 1, p.facing < 0);
+    var fname = DK.playerFrameName(p);
+    if (DK.renderOthers) DK.renderOthers(ctx, cx, cy, "world");   // 他の人（みんなで遊ぶとき）。自分は一番手前に描く
+    if (p.slow > 0 && ((p.slow >> 2) & 1)) ctx.globalAlpha = 0.5;   // 踏まれて鈍っている間は点滅
+    if (DK.playerColor) ctx.drawImage(DK.playerSprite(fname, DK.playerColor, p.facing < 0), Math.round(p.x) - cx, Math.round(p.y) - cy);
+    else DK.drawPixels(ctx, DK.playerFrames[fname], Math.round(p.x) - cx, Math.round(p.y) - cy, 1, p.facing < 0);
+    ctx.globalAlpha = 1;
 
     // HUD（文字は倍率をかけずに描く）
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (DK.renderOthers) { ctx.save(); DK.renderOthers(ctx, cx, cy, "names"); ctx.restore(); }   // 頭の上の名前
     ctx.font = "16px DotGothic16, sans-serif";
     ctx.lineWidth = 4; ctx.strokeStyle = "#101224"; ctx.fillStyle = "#f4f4f4";
     ctx.textAlign = "left";
@@ -589,7 +696,7 @@ window.DK = window.DK || {};
       drawCenterText(ctx, [
         { text: "クリア！", size: 48, y: 230, color: "#ffd166" },
         { text: "タイム " + formatTime(DK.clearInfo.time) + "　失敗 " + DK.clearInfo.deaths + "回", size: 32, y: 290, color: "#f4f4f4" },
-        { text: "R キーでもう一度", size: 16, y: 340, color: "#a9b0cc" }
+        { text: DK.noRestart ? "みんなのゴールを待っているよ" : "R キーでもう一度", size: 16, y: 340, color: "#a9b0cc" }
       ].concat(DK.playOpts && DK.playOpts.note ? [{ text: DK.playOpts.note(DK.clearInfo), size: 16, y: 392, color: "#52b788" }] : []), "#f4f4f4");
     }
   };
@@ -604,6 +711,7 @@ window.DK = window.DK || {};
     last = t;
     while (acc >= STEP) { DK.update(); acc -= STEP; }
     DK.render();
+    if (DK.onFrame) DK.onFrame();     // みんなで遊ぶとき、自分の位置を送る
   }
   window.addEventListener("DOMContentLoaded", function () { requestAnimationFrame(frame); });
 })();

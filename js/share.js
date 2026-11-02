@@ -68,7 +68,10 @@ window.DK = window.DK || {};
 
   // 友達のファイルの文字列を読み込む。成功なら { ok:true, data:{title,author,start,cells}, authorClear, newParts }
   // 失敗なら { ok:false, error:"理由" }。部品は手元に追加される（自作部品として保存される）
-  DK.importStageText = function (text) {
+  // opts.temp が true のとき（みんなで遊ぶ対戦のステージ）：部品は「一時」として追加し、保存もしない。
+  //   ids は result.tempIds に入る。遊び終わったら DK.dropParts(tempIds) で消す（自分の部品一覧に混ぜないため）
+  DK.importStageText = function (text, opts) {
+    var temp = !!(opts && opts.temp), tempIds = [];
     if (typeof text !== "string" || text.length > MAX_FILE_CHARS) return { ok: false, error: "ファイルが大きすぎるか、読めないよ。" };
     var raw;
     try { raw = JSON.parse(text); } catch (e) { return { ok: false, error: "ステージのファイルじゃないみたい（読み取れなかったよ）。" }; }
@@ -98,7 +101,7 @@ window.DK = window.DK || {};
       });
       var def = { id: null, name: d.name, w: d.w, h: d.h, pixels: d.pixels, motion: d.motion, effect: d.effect, children: kids };
       var key = contentKey(def), found = null;
-      DK.partOrder.forEach(function (pid) {
+      if (!temp) DK.partOrder.forEach(function (pid) {
         var p = DK.parts[pid];
         if (!found && !p.builtin && contentKey(DK.partToData(p)) === key) found = pid;
       });
@@ -106,6 +109,7 @@ window.DK = window.DK || {};
       else {
         def.id = DK.newPartId();
         DK.addPart(def);
+        if (temp) tempIds.push(def.id);
         map[id] = def.id; added++;
       }
       state[id] = "done";
@@ -119,10 +123,10 @@ window.DK = window.DK || {};
       if (m) cells.push({ x: c.x, y: c.y, partId: m });
     });
     DK.fixGraph();
-    if (added) DK.saveUserParts();
+    if (added && !temp) DK.saveUserParts();
     var h = DK.sanitizeStageHeight(raw.h);
     cells = DK.sanitizeCells(cells, h);
-    if (!cells.length) return { ok: false, error: "置かれている部品が1つも読み込めなかったよ。" };
+    if (!cells.length) { DK.dropParts(tempIds); return { ok: false, error: "置かれている部品が1つも読み込めなかったよ。" }; }
 
     var base = DK.sanitizeStageData({ title: raw.title, h: h, start: raw.start, cells: cells, timeLimit: raw.timeLimit });
     var ac = raw.authorClear;
@@ -131,7 +135,12 @@ window.DK = window.DK || {};
     return {
       ok: true,
       data: { title: base.title, author: String(raw.author || "").replace(/[\r\n\t]/g, " ").slice(0, 16), h: base.h, start: base.start, cells: base.cells, timeLimit: base.timeLimit },
-      authorClear: authorClear, newParts: added
+      authorClear: authorClear, newParts: added, tempIds: tempIds
     };
+  };
+
+  // 一時の部品を消す（呼び出し先を消す前に、呼び出す側から先に消えるよう、後から作ったものから消す）
+  DK.dropParts = function (ids) {
+    (ids || []).slice().reverse().forEach(function (id) { if (DK.parts[id] && !DK.parts[id].builtin) DK.removePart(id); });
   };
 })();

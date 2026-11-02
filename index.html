@@ -14,8 +14,9 @@
     <button data-screen="parts">部品を作る</button>
     <button data-screen="stage">ステージを作る</button>
     <button data-screen="play">あそぶ</button>
+    <button data-screen="multi" id="tab-multi" hidden>みんなで</button>
   </nav>
-  <button id="sound-toggle" class="btn" style="margin-left:auto" title="効果音のオン・オフ">🔊 音あり</button>
+  <button id="sound-toggle" class="btn" title="効果音のオン・オフ">🔊 音あり</button>
 </header>
 
 <main>
@@ -75,11 +76,11 @@
               </div>
             </div>
 
-            <div id="pe-build" style="display:none">
+            <div id="pe-build">
               <p class="hint">他の部品を呼び出して、この部品の中に置けるよ。呼び出した部品は自分の動き・効果のまま、この部品の動きに乗って動く。キャンバスの上でドラッグ、または矢印キー（Shiftで8ドット）で動かせる。</p>
               <div id="pe-children"></div>
               <button id="pe-add-child" class="btn primary">＋ 部品を呼び出す</button>
-              <div id="pe-picker" class="pe-picker" style="display:none"></div>
+              <div id="pe-picker" class="pe-picker"></div>
             </div>
           </div>
 
@@ -197,9 +198,11 @@
   </section>
 
   <section id="screen-play" class="screen">
-    <h2>あそぶ <button id="play-back" class="btn" style="display:none">← ステージ作りにもどる</button>
+    <h2>あそぶ <button id="play-back" class="btn">← ステージ作りにもどる</button>
+      <button id="play-lobby" class="btn" hidden>← ロビーにもどる</button>
+      <button id="play-crates" class="btn" hidden title="みんなの画面で、木箱を最初の位置にもどす">📦 木箱をもどす</button>
       <button id="play-open" class="btn primary" title="友達からもらったステージのファイルを開く">📂 ステージのファイルを開く</button>
-      <input id="play-file" type="file" accept=".json,application/json" style="display:none"></h2>
+      <input id="play-file" type="file" accept=".json,application/json"></h2>
     <div class="pe-tools">
       <span class="hint">見本ステージ：</span>
       <button class="btn" id="play-sample1" title="走る・ジャンプ・穴・トゲだけのやさしい面">1. はじめの一歩</button>
@@ -207,10 +210,35 @@
       <button class="btn" id="play-sample3" title="木箱を押して踏み台にし、壁キックで縦穴を登る縦長の面">3. たてのぼり</button>
     </div>
     <p id="play-msg" class="hint"></p>
+    <p id="mp-hud" class="mp-hud" hidden></p>
     <div class="canvas-wrap">
       <canvas id="game" width="960" height="576"></canvas>
+      <div id="mp-overlay" class="mp-overlay" hidden></div>
     </div>
     <p class="todo">操作：← → / A D で移動、Space / Z / ↑ / W でジャンプ（長押しで高く）、R でやり直し　※右端のゴール旗を目指そう</p>
+  </section>
+
+  <section id="screen-multi" class="screen">
+    <h2>みんなで あそぶ</h2>
+    <div id="mp-join" class="mp-panel">
+      <p class="hint">サーバーのオーナーから教えてもらった「合言葉」を入れて、参加しよう。</p>
+      <div class="mp-form">
+        <label class="mp-field">なまえ（10文字まで）<input id="mp-name" type="text" maxlength="10" autocomplete="off"></label>
+        <label class="mp-field">合言葉<input id="mp-pass" type="text" maxlength="12" autocomplete="off" autocapitalize="characters"></label>
+        <button id="mp-go" class="btn primary">参加する</button>
+      </div>
+      <p id="mp-msg" class="mp-msg"></p>
+    </div>
+    <div id="mp-lobby" class="mp-panel" hidden>
+      <h3>ロビー <span id="mp-me" class="hint"></span> <button id="mp-leave" class="btn">退出する</button></h3>
+      <p class="hint">いま参加している人</p>
+      <ul id="mp-players" class="mp-players"></ul>
+      <p><button id="mp-plaza" class="btn primary">🎮 ひろばで あそぶ</button> <span class="hint">みんなで自由に走りまわれる練習用の場所（得点はなし）</span></p>
+      <p id="mp-matchinfo" class="hint">オーナーが対戦を始めるのを待っています。</p>
+      <p id="mp-matchback" hidden><button id="mp-back" class="btn primary">🎮 対戦の画面にもどる</button></p>
+      <h3>優勝回数ランキング</h3>
+      <table id="mp-board" class="mp-board"><thead><tr><th>順位</th><th>なまえ</th><th>優勝</th><th>対戦数</th></tr></thead><tbody></tbody></table>
+    </div>
   </section>
 </main>
 
@@ -225,5 +253,8 @@
 <script src="js/share.js"></script>
 <script src="js/stageeditor.js"></script>
 <script src="js/shareui.js"></script>
+<script src="js/net.js"></script>
+<script src="js/cratenet.js"></script>
+<script src="js/multi.js"></script>
 </body>
 </html>

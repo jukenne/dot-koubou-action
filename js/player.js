@@ -72,3 +72,23 @@ DK.playerFrames = {};
 Object.keys(DK.PLAYER_FRAMES_TEXT).forEach(function (name) {
   DK.playerFrames[name] = DK.textToPixels(DK.PLAYER_FRAMES_TEXT[name], DK.PLAYER_LEGEND);
 });
+
+// 体の青（b）だけ color に差し替えたスプライト（Canvas）を返す。flip=true で左右反転。みんなで遊ぶとき、人ごとに色を変えるため
+DK.playerSpriteCache = {};
+DK.playerSprite = function (frame, color, flip) {
+  var key = frame + color + (flip ? "f" : "");
+  var c = DK.playerSpriteCache[key];
+  if (c) return c;
+  var pal = DK.config.PALETTE, map = { k: pal[0], w: pal[1], r: pal[2], y: pal[4], b: color };
+  c = document.createElement("canvas"); c.width = c.height = 16;
+  var g = c.getContext("2d");
+  DK.PLAYER_FRAMES_TEXT[frame].forEach(function (row, y) {
+    for (var x = 0; x < 16; x++) {
+      var col = map[row[x]];
+      if (!col) continue;
+      g.fillStyle = col; g.fillRect(flip ? 15 - x : x, y, 1, 1);
+    }
+  });
+  DK.playerSpriteCache[key] = c;
+  return c;
+};

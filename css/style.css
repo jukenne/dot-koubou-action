@@ -43,7 +43,7 @@ main { padding: 24px 20px; max-width: 1000px; margin: 0 auto; }
 .big-title { font-size: 32px; }
 .big-sub { color: var(--sub); font-size: 16px; }
 .todo { color: var(--sub); }
-.canvas-wrap { max-width: 960px; }
+.canvas-wrap { max-width: 960px; position: relative; }
 #game { width: 100%; height: auto; background: #101224; border: 2px solid var(--line); image-rendering: pixelated; }
 
 /* ---- 部品エディタ ---- */
@@ -149,3 +149,44 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 .st-limit-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 16px; }
 #st-limit { width: 90px; padding: 4px 8px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; }
 #st-limit:disabled { opacity: 0.4; }
+
+/* 最初の見た目（HTMLに style 属性を書かない：マルチプレイのサーバーは CSP で style 属性を禁止している） */
+#sound-toggle { margin-left: auto; }
+#pe-build, #pe-picker, #play-back, #play-file { display: none; }
+
+/* ---- マルチプレイ（MP2：参加とロビー） ---- */
+[hidden] { display: none !important; }
+.mp-panel { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; max-width: 640px; }
+.mp-panel h3 { margin: 0 0 8px; font-size: 16px; display: flex; align-items: center; gap: 12px; }
+.mp-panel h3 .btn { margin-left: auto; }
+.mp-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.mp-field { display: flex; flex-direction: column; gap: 4px; color: var(--sub); font-size: 16px; }
+.mp-field input { width: 200px; max-width: 100%; padding: 6px 8px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; }
+#mp-pass { text-transform: uppercase; letter-spacing: 2px; }
+.mp-msg { min-height: 24px; margin: 10px 0 0; color: #f4a261; }
+.mp-msg.ok { color: #52b788; }
+.mp-players { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.mp-players li { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg); border: 2px solid var(--line); border-radius: 8px; }
+.mp-players li.me { border-color: var(--accent); }
+.mp-dot { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #0008; flex: none; }
+.mp-board { border-collapse: collapse; width: 100%; }
+.mp-board th, .mp-board td { text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--line); }
+.mp-board th { color: var(--sub); font-weight: normal; }
+.mp-board td.num { text-align: right; }
+
+/* 対戦中の表示（上の帯と、画面にかぶせる案内・結果） */
+.mp-hud { max-width: 960px; margin: 6px 0; padding: 6px 12px; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
+.mp-hud .hot { color: #ffd166; }
+.mp-hud .bad { color: #e63946; }
+.mp-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(16, 18, 36, 0.92); text-align: center; padding: 12px; overflow: auto; }
+.mp-overlay[hidden] { display: none; }
+.mp-overlay.clear { background: rgba(16, 18, 36, 0); pointer-events: none; }
+.mp-big { font-size: 64px; line-height: 1.2; color: #ffd166; }
+.mp-mid { font-size: 32px; line-height: 1.3; }
+.mp-sub { font-size: 16px; color: var(--sub); }
+.mp-result { border-collapse: collapse; min-width: 420px; margin: 8px 0; }
+.mp-result th, .mp-result td { padding: 3px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+.mp-result th { color: var(--sub); font-weight: normal; }
+.mp-result td.num, .mp-result th.num { text-align: right; }
+.mp-result tr.me td { color: #ffd166; }
+.mp-result tr.win td { color: #ffd166; font-size: 24px; }
