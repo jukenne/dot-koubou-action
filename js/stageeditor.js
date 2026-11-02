@@ -5,9 +5,9 @@
 window.DK = window.DK || {};
 
 (function () {
-  var T = DK.config.TILE, W = DK.config.STAGE_W, H = DK.config.STAGE_H;
+  var T = DK.config.TILE, W = DK.config.STAGE_W;
   var ES = 2;                 // エディタでの表示倍率（ゲーム本編は3倍。全体を見渡せるよう小さめ）
-  var EFFECT_NAME = { solid: "足場", deadly: "即死", goal: "ゴール" };
+  var EFFECT_NAME = { solid: "足場", deadly: "即死", goal: "ゴール", push: "押せる" };
 
   function $(id) { return document.getElementById(id); }
   function active() { return $("screen-stage").classList.contains("active"); }
@@ -22,8 +22,8 @@ window.DK = window.DK || {};
   var palRefs = {};
 
   // ---- 変更の記録・保存 ----
-  function snapshot() { return JSON.stringify({ start: cur.start, cells: cur.cells }); }
-  function restore(json) { var d = JSON.parse(json); cur.start = d.start; cur.cells = d.cells; }
+  function snapshot() { return JSON.stringify({ h: cur.h, start: cur.start, cells: cur.cells }); }
+  function restore(json) { var d = JSON.parse(json); cur.h = d.h; cur.start = d.start; cur.cells = d.cells; syncHeight(); }
 
   function pushHistory() {
     history.push(snapshot());
@@ -73,6 +73,7 @@ window.DK = window.DK || {};
     el.style.borderLeftColor = goals ? "" : "#f4a261";
 
     var ok = isCleared();
+    renderLimit();
     $("st-export").disabled = !ok;
     $("st-share-note").textContent = ok
       ? "✓ 自分でクリアできたよ（タイム " + DK.formatTime(cur.cleared.time) + "）。共有ファイルを書き出せる。"
@@ -81,10 +82,31 @@ window.DK = window.DK || {};
         : "共有するには、まず自分で「▶ テストプレイ」してゴールまでクリアしてね（クリアできないステージを渡さないため）。");
   }
 
+  // ---- 時間制限 ----
+  function renderLimit() {
+    var on = cur.timeLimit > 0;
+    $("st-limit-on").checked = on;
+    $("st-limit").disabled = !on;
+    if (on && document.activeElement !== $("st-limit")) $("st-limit").value = cur.timeLimit;
+    var note = "";
+    if (!on) note = "付けると、時間が終わったときにミスになるよ。";
+    else if (cur.cleared && cur.cleared.sig === DK.stageSignature(cur)) {
+      var t = cur.cleared.time / DK.config.FPS;
+      note = "自分のクリアタイムは " + t.toFixed(2) + "秒。友達には余裕を持たせて、" + Math.ceil(t * 1.5) + "秒くらいが目安だよ。";
+    } else note = DK.TIME_LIMIT_MIN + "〜" + DK.TIME_LIMIT_MAX + "秒の間で決めてね。テストプレイでクリアできる時間にしよう。";
+    $("st-limit-note").textContent = note;
+  }
+  function setLimit(v) {
+    var n = DK.sanitizeTimeLimit(v);
+    if (n === cur.timeLimit) return;
+    cur.timeLimit = n;
+    renderStatus(); scheduleSave();
+  }
+
   // ---- 描画 ----
   function draw() {
-    var cv = $("st-canvas");
-    if (cv.width !== W * T * ES) { cv.width = W * T * ES; cv.height = H * T * ES; }
+    var cv = $("st-canvas"), H = cur.h;
+    if (cv.width !== W * T * ES || cv.height !== H * T * ES) { cv.width = W * T * ES; cv.height = H * T * ES; }
     var ctx = cv.getContext("2d"), x, y;
     ctx.setTransform(ES, 0, 0, ES, 0, 0);
     ctx.imageSmoothingEnabled = false;
@@ -108,6 +130,7 @@ window.DK = window.DK || {};
     ctx.strokeStyle = "rgba(72,149,239,0.7)";
     ctx.beginPath();
     for (x = DK.config.SCREEN_W; x < W; x += DK.config.SCREEN_W) { ctx.moveTo(x * T, 0); ctx.lineTo(x * T, H * T); }
+    for (y = DK.config.SCREEN_H; y < H; y += DK.config.SCREEN_H) { ctx.moveTo(0, y * T); ctx.lineTo(W * T, y * T); }
     ctx.stroke();
     // マスの線
     ctx.strokeStyle = "rgba(255,255,255,0.07)";
@@ -121,13 +144,13 @@ window.DK = window.DK || {};
     DK.drawPixels(ctx, DK.playerFrames.idle, s.x * T, (s.y + 1) * T - T, 1, false);
     ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2 / ES;
     ctx.strokeRect(s.x * T + 0.5, s.y * T + 0.5, T - 1, T - 1);
-    ctx.fillStyle = "#ffd166"; ctx.font = "bold 7px sans-serif"; ctx.textAlign = "left";
+    ctx.fillStyle = "#ffd166"; ctx.font = "8px DotGothic16, sans-serif";   // 8px × 倍率2 = 16px でくっきり ctx.textAlign = "left";
     ctx.fillText("START", s.x * T + 1, s.y * T - 2);
 
     // 置く前のプレビュー（ゴースト）
     if (hover && !stroke) {
       if (tool === "place" && DK.parts[selId]) {
-        var part = DK.parts[selId], ok = DK.fitsStage(part, hover.x, hover.y), t = DK.tilesOf(part);
+        var part = DK.parts[selId], ok = DK.fitsStage(part, hover.x, hover.y, cur.h), t = DK.tilesOf(part);
         ctx.save();
         ctx.globalAlpha = ok ? 0.6 : 0.3;
         ctx.translate(hover.x * T, hover.y * T);
@@ -150,7 +173,7 @@ window.DK = window.DK || {};
   }
 
   function cellAt(e) {
-    var r = $("st-canvas").getBoundingClientRect();
+    var H = cur.h, r = $("st-canvas").getBoundingClientRect();
     var x = Math.floor((e.clientX - r.left) / r.width * W), y = Math.floor((e.clientY - r.top) / r.height * H);
     return x >= 0 && x < W && y >= 0 && y < H ? { x: x, y: y } : null;
   }
@@ -158,7 +181,7 @@ window.DK = window.DK || {};
   // ---- 置く・消す ----
   function putAt(c) {
     var part = DK.parts[selId];
-    if (!part || !DK.fitsStage(part, c.x, c.y)) return false;
+    if (!part || !DK.fitsStage(part, c.x, c.y, cur.h)) return false;
     var before = cur.cells;
     var same = before.some(function (o) { return o.x === c.x && o.y === c.y && o.partId === selId; });
     if (same) return false;                       // 同じものが同じ場所にあるなら何もしない
@@ -272,6 +295,27 @@ window.DK = window.DK || {};
     draw();
   }
 
+  // ---- ステージの高さ ----
+  function syncHeight() { $("st-height").value = cur.h; }
+  // 高さを変える。下端をそろえる（地面が下に残る）ので、部品は上下にずれる。
+  // 縮めて上からはみ出す部品は消えるので、数を伝えて確認する
+  function setHeight(nh) {
+    nh = DK.sanitizeStageHeight(nh);
+    if (nh === cur.h) return;
+    var shift = nh - cur.h;
+    var moved = cur.cells.map(function (c) { return { x: c.x, y: c.y + shift, partId: c.partId }; });
+    var kept = moved.filter(function (c) { return c.y >= 0; });
+    var lost = moved.length - kept.length;
+    if (lost && !window.confirm("縮めると、上にある部品が " + lost + " 個消えるよ。いい？（「戻す」で元に戻せるよ）")) { syncHeight(); return; }
+    pushHistory();
+    cur.h = nh; cur.cells = kept;
+    cur.start = { x: cur.start.x, y: Math.max(0, Math.min(nh - 1, cur.start.y + shift)) };
+    changed();
+    // 下端を見せる（広げたときに空っぽの上ばかり見えないように）
+    var wrap = document.querySelector(".st-canvas-wrap");
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
   function loadCells(cells) { pushHistory(); cur.cells = cells; changed(); }
 
   function bindUI() {
@@ -284,13 +328,28 @@ window.DK = window.DK || {};
       if (!cur.cells.length) return;
       if (window.confirm("部品を全部消すよ。いい？（「戻す」で元に戻せるよ）")) loadCells([]);
     });
-    [["st-sample1", DK.tutorialStage], ["st-sample2", DK.sampleStage]].forEach(function (pair) {
+    [["st-sample1", DK.tutorialStage], ["st-sample2", DK.sampleStage], ["st-sample3", DK.towerStage]].forEach(function (pair) {
       $(pair[0]).addEventListener("click", function () {
         if (cur.cells.length && !window.confirm("いまのステージは見本に置き換わるよ。いい？（「戻す」で元に戻せるよ）")) return;
         var s = pair[1]();
-        pushHistory(); cur.cells = s.cells; cur.start = s.start; changed();
+        pushHistory(); cur.h = s.h; cur.cells = s.cells; cur.start = s.start; cur.timeLimit = s.timeLimit || 0; syncHeight(); changed();
       });
     });
+    $("st-limit-on").addEventListener("change", function () {
+      if (this.checked) { var v = parseInt($("st-limit").value, 10); setLimit(v > 0 ? v : 60); }
+      else setLimit(0);
+      renderLimit();
+    });
+    $("st-limit").addEventListener("input", function () {
+      var v = parseInt(this.value, 10);
+      if (v > 0) setLimit(v);
+    });
+    $("st-limit").addEventListener("change", function () {   // 入力を終えたら、丸めた値を欄にも反映する
+      var v = parseInt(this.value, 10);
+      setLimit(v > 0 ? v : (cur.timeLimit || 60));
+      this.value = cur.timeLimit || 60;
+    });
+    $("st-height").addEventListener("change", function () { setHeight(parseInt(this.value, 10)); });
     $("st-title").addEventListener("input", function () { cur.title = this.value.slice(0, 24); scheduleSave(); });
     $("st-test").addEventListener("click", function () {
       clearTimeout(saveTimer); DK.saveStageData(cur);
@@ -341,7 +400,7 @@ window.DK = window.DK || {};
   // 部品の削除などで使えなくなった置き方を取り除き、パレット・描画を更新する
   function refresh() {
     var before = cur.cells.length;
-    cur.cells = DK.sanitizeCells(cur.cells);
+    cur.cells = DK.sanitizeCells(cur.cells, cur.h);
     renderPalette();
     draw(); renderStatus();
     if (cur.cells.length !== before) scheduleSave();
@@ -350,9 +409,10 @@ window.DK = window.DK || {};
   function init() {
     var saved = DK.loadStageData();
     if (saved) cur = saved;
-    else { var s = DK.sampleStage(); cur = { title: "", author: "", start: s.start, cells: s.cells, cleared: null }; }
+    else { var s = DK.sampleStage(); cur = { title: "", author: "", h: s.h, start: s.start, cells: s.cells, timeLimit: 0, cleared: null }; }
     $("st-title").value = cur.title;
     $("st-author").value = cur.author || "";
+    syncHeight();
     bindCanvas(); bindUI();
     renderPalette(); updateUndo(); draw(); renderStatus();
   }

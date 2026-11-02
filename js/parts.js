@@ -2,7 +2,8 @@
 // 部品 = { id, name, w, h, pixels[w*h], motion, effect, children, enabled, speedScale, builtin, ver }
 //   w, h    : 絵の大きさ（ドット）。16 / 32 / 48 / 64 / 80 のどれか。16ドット＝ステージの1マス
 //   motion  : { type: "static" } / { type: "slide", dx, dy, speed } / { type: "rotate", dir, speed }
-//   effect  : "solid"（足場）/ "deadly"（即死）/ "goal"（ゴール）。この部品自身の絵に対する効果
+//   effect  : "solid"（足場）/ "deadly"（即死）/ "goal"（ゴール）/ "push"（押せる＝木箱）。この部品自身の絵に対する効果
+//             "push" の部品は、動き「静止」・くみたてなし（読み込み時にそう直す）。ゲーム中は塗った範囲を囲む長方形として動く
 //   children: [{ partId, x, y }] …この部品の中に置いた他の部品（リンク。元の部品を直すと全部に反映される）
 //             x, y は親の絵の左上からのドット。子は自分の動き・効果を保ったまま親の動きに乗る。
 //             後ろの子ほど手前に描く。入れ子は最大 DK.MAX_DEPTH 段、自分自身を呼ぶ（循環）のは禁止
@@ -38,7 +39,7 @@ DK.addPart = function (def) {
 };
 
 // 効果のビット（1つの点に重なった部品の効果をまとめて持てる）
-DK.EFFECT_BIT = { solid: 1, deadly: 2, goal: 4 };
+DK.EFFECT_BIT = { solid: 1, deadly: 2, goal: 4, push: 8 };
 
 // 動きの状態。経過フレーム t のときの { ox, oy, ang }（置いた場所からのずれ(ドット)と回転角(ラジアン)）
 //   往復 slide : { type, dx, dy（マス）, speed（マス/秒） } …行ったり来たり（三角波）
@@ -313,6 +314,14 @@ DK.fixGraph = function () {
     return 0;
   }) });
 
+  // 木箱（押せる）。押すと動き、重力で落ち、積める。箱にとってトゲは床
+  DK.addPart({ id: "crate", name: "木箱", effect: "push", pixels: DK.pixelsFromFn(function (x, y) {
+    var e = Math.min(x, y, 15 - x, 15 - y);
+    if (e === 0) return 1;
+    if (Math.abs(x - y) <= 1 || Math.abs(x + y - 15) <= 1) return 1;
+    return e === 1 ? 5 : 4;
+  }) });
+
   // 組み立ての見本：往復する台車の上で、ノコギリ（他の部品）が回る。「他の部品を呼び出す」の例
   DK.addPart({ id: "sawcart", name: "ノコギリ台車", w: 32, h: 32, effect: "solid",
     pixels: DK.pixelsFromFn(function (x, y) {
@@ -373,7 +382,7 @@ DK.sanitizePart = function (raw) {
   } else {
     motion = { type: "static" };
   }
-  var effect = raw.effect === "deadly" || raw.effect === "goal" ? raw.effect : "solid";
+  var effect = raw.effect === "deadly" || raw.effect === "goal" || raw.effect === "push" ? raw.effect : "solid";
   var name = typeof raw.name === "string" ? raw.name.replace(/[\r\n\t]/g, " ").trim().slice(0, 16) : "";
   var children = [];
   if (Array.isArray(raw.children)) {
@@ -386,6 +395,7 @@ DK.sanitizePart = function (raw) {
       });
     });
   }
+  if (effect === "push") { motion = { type: "static" }; children = []; }   // 押せる部品は動かない・組み立てない
   return { id: raw.id, name: name || "なまえなし", w: w, h: h, pixels: pixels, motion: motion, effect: effect, children: children };
 };
 

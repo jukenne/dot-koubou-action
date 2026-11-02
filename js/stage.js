@@ -11,17 +11,21 @@ DK.isSimpleStatic = function (part) {
 // 遊ぶとき用の早見表を作る。cells の x, y は、部品の左上が置かれるマス
 //   grid    : 動かない部品を、占めるマスすべてに並べたもの（すぐ引ける）。値は { part, x, y }
 //   statics : grid に載せた部品の一覧（描画用）
+//   crateDefs: 押せる部品（木箱）。早見表には載せない
 //   movers  : 動く部品・子を持つ部品の一覧。cx, cy, r は「この円の外には届かない」範囲で、判定の絞り込みに使う
 DK.buildGrid = function (stage) {
   var T = DK.config.TILE;
   stage.grid = new Array(stage.w * stage.h).fill(null);
   stage.statics = [];
   stage.movers = [];
+  stage.crateDefs = [];   // 押せる部品（木箱）の最初の置き場所。遊ぶとき DK.crates に取り出して動かす
   stage.cells.forEach(function (c) {
     var part = DK.parts[c.partId];
     if (!part) return;
     var inst = { part: part, x: c.x, y: c.y };
-    if (DK.isSimpleStatic(part)) {
+    if (part.effect === "push" && DK.isSimpleStatic(part)) {
+      stage.crateDefs.push(inst);
+    } else if (DK.isSimpleStatic(part)) {
       for (var ty = c.y; ty < c.y + part.h / T; ty++) {
         for (var tx = c.x; tx < c.x + part.w / T; tx++) {
           if (tx >= 0 && tx < stage.w && ty >= 0 && ty < stage.h) stage.grid[ty * stage.w + tx] = inst;
@@ -42,9 +46,10 @@ DK.makeStage = function (o) {
     title: o.title || "",
     author: o.author || "",
     w: DK.config.STAGE_W,
-    h: DK.config.STAGE_H,
+    h: DK.sanitizeStageHeight(o.h),
     start: o.start || { x: 2, y: 9 },    // スタート位置のマス。キャラの足元がこのマスの下端にそろう
-    cells: o.cells || []
+    cells: o.cells || [],
+    timeLimit: DK.sanitizeTimeLimit(o.timeLimit)   // 制限時間（秒）。0 なら無制限
   };
   DK.buildGrid(stage);
   return stage;
@@ -97,23 +102,56 @@ DK.sampleStage = function () {
   return DK.makeStage({ title: "いろいろ部品", author: "", start: { x: 2, y: 9 }, cells: cells });
 };
 
+// 見本ステージ3「たてのぼり」（高さ24）：木箱を寄せて踏み台にして高い壁を越え、壁キックで縦穴を登ってゴールへ
+DK.towerStage = function () {
+  var cells = [];
+  function put(x, y, id) { cells.push({ x: x, y: y, partId: id }); }
+  var x, y;
+  for (x = 0; x < DK.config.STAGE_W; x++) { put(x, 22, "grass"); put(x, 23, "dirt"); }   // 地面
+  put(6, 21, "crate"); put(6, 20, "crate"); put(6, 19, "crate");   // 積んだ木箱（下を押すと上もいっしょに動く）
+  for (y = 14; y <= 21; y++) put(14, y, "grass");          // 高い壁（8マス。ジャンプ＋壁キックでも約7マスまで。木箱を寄せて踏み台にする）
+  put(19, 21, "spike"); put(20, 21, "spike");              // 壁を越えたあとのトゲ
+  for (y = 6; y <= 19; y++) put(24, y, "grass");           // 縦穴の左の壁（下に入り口がある）
+  for (y = 5; y <= 21; y++) put(28, y, "grass");           // 縦穴の右の壁
+  for (x = 29; x <= 44; x++) { put(x, 5, "grass"); put(x, 6, "dirt"); }   // 登った先の足場
+  put(35, 4, "spike"); put(36, 4, "spike");                // 最後のトゲ
+  put(42, 4, "flag");                                      // ゴール
+  return DK.makeStage({ title: "たてのぼり", author: "", h: 24, start: { x: 2, y: 21 }, cells: cells });
+};
+
 // ---- ステージの保存・安全チェック（M5） ----
 DK.STAGE_KEY = "dk.stage";
+
+// 制限時間（秒）。0 = 無制限。作り手が決められる範囲は 5〜600 秒の整数
+DK.TIME_LIMIT_MIN = 5;
+DK.TIME_LIMIT_MAX = 600;
+DK.sanitizeTimeLimit = function (v) {
+  v = Math.round(Number(v));
+  if (!isFinite(v) || v <= 0) return 0;
+  return Math.max(DK.TIME_LIMIT_MIN, Math.min(DK.TIME_LIMIT_MAX, v));
+};
+
+// ステージの縦マス数。選べる値（DK.config.STAGE_HEIGHTS）以外は基本の12にする（昔のステージは h がない）
+DK.sanitizeStageHeight = function (v) {
+  v = Number(v);
+  return DK.config.STAGE_HEIGHTS.indexOf(v) >= 0 ? v : DK.config.STAGE_H;
+};
+DK.STAGE_H_MAX = Math.max.apply(null, DK.config.STAGE_HEIGHTS);
 
 // 部品がステージ上で占めるマス数
 DK.tilesOf = function (part) {
   return { w: part.w / DK.config.TILE, h: part.h / DK.config.TILE };
 };
 
-// (x, y) に部品を置いたとき、ステージの中に収まるか
-DK.fitsStage = function (part, x, y) {
+// (x, y) に部品を置いたとき、ステージ（縦 h マス）の中に収まるか
+DK.fitsStage = function (part, x, y, h) {
   var t = DK.tilesOf(part);
-  return x >= 0 && y >= 0 && x + t.w <= DK.config.STAGE_W && y + t.h <= DK.config.STAGE_H;
+  return x >= 0 && y >= 0 && x + t.w <= DK.config.STAGE_W && y + t.h <= (h || DK.config.STAGE_H);
 };
 
 // 保存データ・友達のファイルを読むときの安全チェック。使えない置き方は捨てる。
 // 後ろに書かれたものが手前に重なる（古い方を残さず、重なったら後勝ち）
-DK.sanitizeCells = function (list) {
+DK.sanitizeCells = function (list, h) {
   var out = [];
   if (!Array.isArray(list)) return out;
   list.forEach(function (c) {
@@ -121,7 +159,7 @@ DK.sanitizeCells = function (list) {
     var x = Number(c.x), y = Number(c.y);
     if (!Number.isInteger(x) || !Number.isInteger(y)) return;
     var part = DK.parts[c.partId];
-    if (!DK.fitsStage(part, x, y)) return;
+    if (!DK.fitsStage(part, x, y, h)) return;
     out = DK.placeCell(out, { x: x, y: y, partId: c.partId });
   });
   return out;
@@ -151,9 +189,9 @@ DK.cellIndexAt = function (cells, tx, ty) {
 
 DK.sanitizeStageData = function (d) {
   d = d && typeof d === "object" ? d : {};
-  var s = d.start || {};
+  var s = d.start || {}, h = DK.sanitizeStageHeight(d.h);
   var sx = Number.isInteger(s.x) ? Math.max(0, Math.min(DK.config.STAGE_W - 1, s.x)) : 2;
-  var sy = Number.isInteger(s.y) ? Math.max(0, Math.min(DK.config.STAGE_H - 1, s.y)) : 9;
+  var sy = Number.isInteger(s.y) ? Math.max(0, Math.min(h - 1, s.y)) : h - 3;
   var cl = d.cleared, cleared = null;
   if (cl && typeof cl.sig === "string" && cl.sig.length <= 30 && Number.isInteger(cl.time) && cl.time > 0 && Number.isInteger(cl.deaths) && cl.deaths >= 0) {
     cleared = { sig: cl.sig, time: cl.time, deaths: cl.deaths };   // 作者がクリアしたときの印と記録（M6）
@@ -161,15 +199,17 @@ DK.sanitizeStageData = function (d) {
   return {
     title: String(d.title || "").slice(0, 24),
     author: String(d.author || "").replace(/[\r\n\t]/g, " ").slice(0, 16),
+    h: h,
     start: { x: sx, y: sy },
-    cells: DK.sanitizeCells(d.cells),
+    cells: DK.sanitizeCells(d.cells, h),
+    timeLimit: DK.sanitizeTimeLimit(d.timeLimit),
     cleared: cleared
   };
 };
 
 DK.saveStageData = function (d) {
   try {
-    localStorage.setItem(DK.STAGE_KEY, JSON.stringify({ title: d.title, author: d.author, start: d.start, cells: d.cells, cleared: d.cleared || null }));
+    localStorage.setItem(DK.STAGE_KEY, JSON.stringify({ title: d.title, author: d.author, h: d.h || DK.config.STAGE_H, start: d.start, cells: d.cells, timeLimit: d.timeLimit || 0, cleared: d.cleared || null }));
     return true;
   } catch (e) { return false; }
 };

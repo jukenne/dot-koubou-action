@@ -1,3 +1,6 @@
+/* ドットフォント DotGothic16（SIL OFL。assets/fonts/OFL.txt）。16×16ドットの設計なので、
+   font-size を 16 の倍数（16, 32…）にすると、1ドットがちょうど整数ピクセルになってくっきり出る */
+@font-face { font-family: "DotGothic16"; src: url("../assets/fonts/DotGothic16-Regular.ttf") format("truetype"); font-display: block; }
 :root {
   --bg: #1a1c2c;
   --panel: #262a42;
@@ -11,13 +14,14 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Meiryo", "Yu Gothic UI", sans-serif;
+  font-family: "DotGothic16", "Meiryo", "Yu Gothic UI", sans-serif;
+  font-size: 16px; font-synthesis: none;
 }
 #topbar {
   display: flex; align-items: center; gap: 8px 24px; flex-wrap: wrap;
   padding: 10px 20px; background: var(--panel); border-bottom: 2px solid var(--line);
 }
-#app-title { margin: 0; font-size: 20px; color: var(--accent); letter-spacing: 1px; }
+#app-title { margin: 0; font-size: 32px; color: var(--accent); }
 #tabs { display: flex; gap: 6px; }
 #tabs button {
   background: transparent; color: var(--sub); border: 2px solid transparent;
@@ -36,8 +40,8 @@ main { padding: 24px 20px; max-width: 1000px; margin: 0 auto; }
   font: inherit; display: flex; flex-direction: column; gap: 8px;
 }
 .big:hover { border-color: var(--accent); transform: translateY(-2px); }
-.big-title { font-size: 22px; font-weight: bold; }
-.big-sub { color: var(--sub); font-size: 14px; }
+.big-title { font-size: 32px; }
+.big-sub { color: var(--sub); font-size: 16px; }
 .todo { color: var(--sub); }
 .canvas-wrap { max-width: 960px; }
 #game { width: 100%; height: auto; background: #101224; border: 2px solid var(--line); image-rendering: pixelated; }
@@ -46,19 +50,19 @@ main { padding: 24px 20px; max-width: 1000px; margin: 0 auto; }
 main:has(#screen-parts.active) { max-width: 1180px; }
 .btn {
   background: var(--panel); color: var(--text); border: 2px solid var(--line); border-radius: 6px;
-  padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer;
+  padding: 6px 12px; font: inherit; font-size: 16px; cursor: pointer;
 }
 .btn:hover { border-color: var(--accent); }
 .btn:disabled { opacity: 0.4; cursor: default; border-color: var(--line); }
-.btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: bold; }
+.btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .btn.danger:hover { border-color: #e63946; color: #e63946; }
 .btn.tool.active { border-color: var(--accent); background: #3a3f66; }
-.hint { color: var(--sub); font-size: 13px; font-weight: normal; }
+.hint { color: var(--sub); font-size: 16px; font-weight: normal; }
 .pe { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
 .pe-list { flex: 0 0 230px; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 12px; }
 .pe-list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.pe-list h2 { margin: 0; font-size: 17px; }
-.pe-list h4 { margin: 14px 0 6px; font-size: 13px; color: var(--sub); }
+.pe-list h2 { margin: 0; font-size: 16px; }
+.pe-list h4 { margin: 14px 0 6px; font-size: 16px; color: var(--sub); }
 .pe-item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: transparent; color: var(--text); border: 2px solid transparent; border-radius: 8px;
@@ -67,11 +71,11 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 .pe-item:hover { background: #2f3454; }
 .pe-item.selected { border-color: var(--accent); background: #2f3454; }
 .pe-item canvas { width: 40px; height: 40px; image-rendering: pixelated; background: repeating-conic-gradient(#20233a 0% 25%, #2a2e4a 0% 50%) 0 0 / 10px 10px; border-radius: 4px; flex: none; }
-.pe-item .nm { font-size: 14px; line-height: 1.3; word-break: break-all; }
-.tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 0 5px; margin-right: 3px; color: var(--bg); }
-.tag.solid { background: #4895ef; } .tag.deadly { background: #e63946; color: #fff; } .tag.goal { background: #ffd166; } .tag.move { background: #52b788; }
+.pe-item .nm { font-size: 16px; line-height: 1.3; word-break: break-all; }
+.tag { display: inline-block; font-size: 16px; border-radius: 4px; padding: 0 5px; margin-right: 3px; color: var(--bg); }
+.tag.solid { background: #4895ef; } .tag.deadly { background: #e63946; color: #fff; } .tag.goal { background: #ffd166; } .tag.push { background: #f4a261; } .tag.move { background: #52b788; }
 .pe-main { flex: 1 1 640px; min-width: 0; }
-.pe-banner { margin: 0 0 12px; padding: 8px 12px; background: var(--panel); border-left: 4px solid var(--accent); border-radius: 4px; color: var(--sub); font-size: 14px; }
+.pe-banner { margin: 0 0 12px; padding: 8px 12px; background: var(--panel); border-left: 4px solid var(--accent); border-radius: 4px; color: var(--sub); font-size: 16px; }
 .pe-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
 .pe-draw h3 { margin: 0 0 8px; font-size: 16px; }
 #pe-canvas { display: block; width: 320px; max-width: 100%; height: auto; border: 2px solid var(--line); border-radius: 6px; touch-action: none; cursor: crosshair; image-rendering: pixelated; }
@@ -81,17 +85,17 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
 .pe-side { flex: 1 1 300px; min-width: 280px; max-width: 420px; }
 .pe-field { display: block; margin-bottom: 14px; }
-.pe-label { display: block; font-size: 14px; margin-bottom: 4px; color: var(--sub); }
+.pe-label { display: block; font-size: 16px; margin-bottom: 4px; color: var(--sub); }
 #pe-name { width: 100%; padding: 6px 8px; margin-top: 4px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; }
 .seg { display: flex; gap: 6px; }
 .seg label { flex: 1; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
-.seg span { display: block; text-align: center; padding: 6px 4px; border: 2px solid var(--line); border-radius: 6px; cursor: pointer; background: var(--panel); font-size: 14px; }
-.seg input:checked + span { border-color: var(--accent); background: #3a3f66; font-weight: bold; }
+.seg span { display: block; text-align: center; padding: 6px 4px; border: 2px solid var(--line); border-radius: 6px; cursor: pointer; background: var(--panel); font-size: 16px; }
+.seg input:checked + span { border-color: var(--accent); background: #3a3f66; }
 .seg input:focus-visible + span { outline: 2px solid #fff; }
-.seg.small span { font-size: 13px; }
+.seg.small span { font-size: 16px; }
 .pe-opts { margin-top: 8px; display: none; }
-.pe-opts label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 4px; }
+.pe-opts label { display: block; font-size: 16px; color: var(--sub); margin-bottom: 4px; }
 .pe-opts input[type=range] { width: 100%; }
 .pe-opts span { color: var(--text); margin-left: 6px; }
 #pe-preview { width: 288px; max-width: 100%; height: auto; border: 2px solid var(--line); border-radius: 6px; image-rendering: pixelated; }
@@ -101,20 +105,20 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 .pe-size .pe-label { display: inline; margin: 0; }
 .pe-size .seg { flex: none; }
 .pe-size .seg button { padding: 4px 8px; min-width: 38px; }
-.seg button { border: 2px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; padding: 4px 8px; }
-.seg button.active { border-color: var(--accent); background: #3a3f66; font-weight: bold; }
+.seg button { border: 2px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+.seg button.active { border-color: var(--accent); background: #3a3f66; }
 .pe-canvas-wrap { max-width: 100%; overflow: auto; }
 #pe-canvas.build { cursor: move; }
 .pe-child { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px; margin-bottom: 6px; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; cursor: pointer; }
 .pe-child.selected { border-color: var(--accent); background: #2f3454; }
 .pe-child canvas { width: 32px; height: 32px; image-rendering: pixelated; background: repeating-conic-gradient(#20233a 0% 25%, #2a2e4a 0% 50%) 0 0 / 8px 8px; border-radius: 4px; flex: none; }
-.pe-child .cname { flex: 1 1 100px; font-size: 13px; word-break: break-all; }
-.pe-child label { font-size: 12px; color: var(--sub); }
-.pe-child input[type=number] { width: 54px; padding: 3px 4px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 4px; font: inherit; font-size: 13px; }
-.pe-child .btn { padding: 2px 8px; font-size: 12px; }
-.pe-child .warn { color: #f4a261; font-size: 12px; width: 100%; }
+.pe-child .cname { flex: 1 1 100px; font-size: 16px; word-break: break-all; }
+.pe-child label { font-size: 16px; color: var(--sub); }
+.pe-child input[type=number] { width: 54px; padding: 3px 4px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 4px; font: inherit; font-size: 16px; }
+.pe-child .btn { padding: 2px 8px; font-size: 16px; }
+.pe-child .warn { color: #f4a261; font-size: 16px; width: 100%; }
 .pe-picker { margin-top: 10px; padding: 8px; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; max-height: 300px; overflow: auto; }
-.pe-pick { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: transparent; color: var(--text); border: 2px solid transparent; border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px; cursor: pointer; }
+.pe-pick { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: transparent; color: var(--text); border: 2px solid transparent; border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 16px; cursor: pointer; }
 .pe-pick:hover:not(:disabled) { background: #2f3454; border-color: var(--accent); }
 .pe-pick:disabled { opacity: 0.4; cursor: default; }
 .pe-pick canvas { width: 32px; height: 32px; image-rendering: pixelated; background: repeating-conic-gradient(#20233a 0% 25%, #2a2e4a 0% 50%) 0 0 / 8px 8px; border-radius: 4px; flex: none; }
@@ -123,7 +127,8 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 /* ---- ステージエディタ（M5） ---- */
 .st-bar { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
 .st-bar .st-right { margin-left: auto; }
-.st-canvas-wrap { overflow-x: auto; border: 2px solid var(--line); border-radius: 8px; background: #101224; }
+.st-height-row select { margin: 0 8px; padding: 4px 8px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; }
+.st-canvas-wrap { overflow: auto; max-height: 70vh; border: 2px solid var(--line); border-radius: 8px; background: #101224; }
 #st-canvas { display: block; cursor: crosshair; touch-action: none; }
 .st-lower { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .st-palette-box { flex: 1 1 420px; }
@@ -133,7 +138,14 @@ main:has(#screen-parts.active) { max-width: 1180px; }
 #st-title { display: block; margin-top: 4px; padding: 6px 8px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; width: 260px; max-width: 100%; }
 
 /* ---- M7：ホームの案内 ---- */
-.big-step { color: var(--accent); font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+.big-step { color: var(--accent); font-size: 16px; }
 .home-help { margin-top: 24px; padding: 14px 18px; background: var(--panel); border-left: 4px solid var(--accent); border-radius: 6px; }
 .home-help h3 { margin: 0 0 6px; font-size: 16px; }
-.home-help p { margin: 6px 0; color: var(--sub); font-size: 14px; line-height: 1.6; }
+.home-help p { margin: 6px 0; color: var(--sub); font-size: 16px; line-height: 1.6; }
+
+/* ---- 時間制限 ---- */
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 4px 0; font-size: 16px; }
+.check input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+.st-limit-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 16px; }
+#st-limit { width: 90px; padding: 4px 8px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 6px; font: inherit; }
+#st-limit:disabled { opacity: 0.4; }

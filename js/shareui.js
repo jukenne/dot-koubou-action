@@ -21,7 +21,8 @@ window.DK = window.DK || {};
     });
     msg("「" + (d.title || name || "ステージ") + "」" + (d.author ? "（" + d.author + " さん作）" : "") +
       (r.newParts ? "　部品を " + r.newParts + " 個、あなたの部品に追加したよ。" : "") +
-      (ac ? "　作者のクリアタイムは " + DK.formatTime(ac.time) + "。" : ""));
+      (ac ? "　作者のクリアタイムは " + DK.formatTime(ac.time) + "。" : "") +
+      (d.timeLimit ? "　制限時間は " + d.timeLimit + "秒！" : ""));
   }
 
   function openFile(file) {
@@ -33,10 +34,10 @@ window.DK = window.DK || {};
   }
 
   function init() {
-    [["play-sample1", DK.tutorialStage], ["play-sample2", DK.sampleStage]].forEach(function (pair) {
+    [["play-sample1", DK.tutorialStage], ["play-sample2", DK.sampleStage], ["play-sample3", DK.towerStage]].forEach(function (pair) {
       $(pair[0]).addEventListener("click", function () {
         var s = pair[1]();
-        DK.playStage({ title: s.title, start: s.start, cells: s.cells });
+        DK.playStage({ title: s.title, h: s.h, start: s.start, cells: s.cells, timeLimit: s.timeLimit });
         msg("見本ステージ「" + s.title + "」");
       });
     });

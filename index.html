@@ -115,6 +115,7 @@
                 <label><input type="radio" name="pe-effect" value="solid"><span>足場</span></label>
                 <label><input type="radio" name="pe-effect" value="deadly"><span>即死</span></label>
                 <label><input type="radio" name="pe-effect" value="goal"><span>ゴール</span></label>
+                <label><input type="radio" name="pe-effect" value="push"><span>押せる</span></label>
               </div>
               <p id="pe-effect-help" class="hint"></p>
             </div>
@@ -147,6 +148,7 @@
         <button id="st-redo" class="btn" title="やり直し（Ctrl+Y）">↷ やり直し</button>
         <button id="st-sample1" class="btn" title="見本ステージ1「はじめの一歩」を読み込む（いまのステージは置き換わる）">見本1を読み込む</button>
         <button id="st-sample2" class="btn" title="見本ステージ2「いろいろ部品」を読み込む（いまのステージは置き換わる）">見本2を読み込む</button>
+        <button id="st-sample3" class="btn" title="見本ステージ3「たてのぼり」を読み込む（いまのステージは置き換わる）">見本3を読み込む</button>
         <button id="st-clear" class="btn danger" title="部品を全部消す">全消し</button>
       </div>
       <div class="pe-tools st-right">
@@ -157,8 +159,17 @@
     </div>
     <p id="st-status" class="pe-banner"></p>
     <p id="st-share-note" class="hint"></p>
+    <label class="pe-field st-height-row">ステージの高さ
+      <select id="st-height">
+        <option value="12">低い（1画面ぶん）</option>
+        <option value="24">ふつう（2画面ぶん）</option>
+        <option value="36">高い（3画面ぶん）</option>
+        <option value="48">とても高い（4画面ぶん）</option>
+      </select>
+      <span class="hint">高さを変えても、下の地面は下に残るよ。</span>
+    </label>
     <div class="st-canvas-wrap"><canvas id="st-canvas"></canvas></div>
-    <p class="hint">青い縦線が「1画面」の区切り（20マスごと）。ステージは4画面ぶん。横にスクロールできるよ。</p>
+    <p class="hint">青い線が「1画面」の区切り（横20マス・縦12マスごと）。横は4画面ぶん。ホイールで縦、Shift＋ホイールで横にスクロールできるよ。</p>
     <div class="st-lower">
       <div class="st-palette-box">
         <h3>置く部品 <span id="st-sel" class="hint"></span></h3>
@@ -172,6 +183,15 @@
         <label class="pe-field">つくった人（共有ファイルに入るよ）
           <input id="st-author" type="text" maxlength="16" autocomplete="off" placeholder="あなたの名前">
         </label>
+        <div class="pe-field" id="st-limit-box">
+          <span class="pe-label">制限時間</span>
+          <label class="check"><input type="checkbox" id="st-limit-on"><span>時間制限を付ける</span></label>
+          <div class="st-limit-row">
+            <input id="st-limit" type="number" min="5" max="600" step="1" value="60" disabled>
+            <span>秒</span>
+          </div>
+          <p id="st-limit-note" class="hint"></p>
+        </div>
       </div>
     </div>
   </section>
@@ -184,6 +204,7 @@
       <span class="hint">見本ステージ：</span>
       <button class="btn" id="play-sample1" title="走る・ジャンプ・穴・トゲだけのやさしい面">1. はじめの一歩</button>
       <button class="btn" id="play-sample2" title="動く足場・回転ノコギリなど、いろいろな部品を使った面">2. いろいろ部品</button>
+      <button class="btn" id="play-sample3" title="木箱を押して踏み台にし、壁キックで縦穴を登る縦長の面">3. たてのぼり</button>
     </div>
     <p id="play-msg" class="hint"></p>
     <div class="canvas-wrap">

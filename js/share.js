@@ -35,7 +35,10 @@ window.DK = window.DK || {};
   // 1つでも変わると別の値になるので、「クリアしたときと同じステージか」の判定に使う
   DK.stageSignature = function (data) {
     var parts = DK.usedPartIds(data.cells).sort().map(function (id) { return DK.partToData(DK.parts[id]); });
-    return hash(JSON.stringify({ s: data.start, c: data.cells, p: parts }));
+    var sig = { s: data.start, c: data.cells, p: parts };
+    if (data.timeLimit > 0) sig.t = data.timeLimit;   // 制限時間も「同じステージか」の条件（なしのときは入れない＝昔の印と同じ）
+    if (data.h && data.h !== DK.config.STAGE_H) sig.h = data.h;   // 高さも同じ（基本の12なら入れない＝昔の印と同じ）
+    return hash(JSON.stringify(sig));
   };
 
   // 書き出し用の文字列を作る。clear は { time, deaths }（作者のクリア記録）
@@ -44,6 +47,8 @@ window.DK = window.DK || {};
     var obj = {
       format: FORMAT, version: VERSION,
       title: data.title || "", author: data.author || "",
+      timeLimit: data.timeLimit > 0 ? data.timeLimit : 0,
+      h: data.h || DK.config.STAGE_H,
       start: data.start, cells: data.cells.map(function (c) { return { x: c.x, y: c.y, partId: c.partId }; }),
       parts: ids.filter(function (id) { return !DK.parts[id].builtin; }).map(function (id) { return DK.partToData(DK.parts[id]); }),
       authorClear: clear ? { time: clear.time, deaths: clear.deaths } : null
@@ -69,7 +74,7 @@ window.DK = window.DK || {};
     try { raw = JSON.parse(text); } catch (e) { return { ok: false, error: "ステージのファイルじゃないみたい（読み取れなかったよ）。" }; }
     if (!raw || raw.format !== FORMAT) return { ok: false, error: "ドット工房アクションのステージのファイルじゃないみたい。" };
     if (raw.version !== VERSION) return { ok: false, error: "このファイルは新しい（または古い）形式で、まだ読めないよ。" };
-    if (!Array.isArray(raw.cells) || raw.cells.length > DK.config.STAGE_W * DK.config.STAGE_H) return { ok: false, error: "ステージの中身が正しくないよ。" };
+    if (!Array.isArray(raw.cells) || raw.cells.length > DK.config.STAGE_W * DK.STAGE_H_MAX) return { ok: false, error: "ステージの中身が正しくないよ。" };
 
     // 1. ファイルの部品を安全チェック（id はファイル内のもの）
     var defs = {};
@@ -115,16 +120,17 @@ window.DK = window.DK || {};
     });
     DK.fixGraph();
     if (added) DK.saveUserParts();
-    cells = DK.sanitizeCells(cells);
+    var h = DK.sanitizeStageHeight(raw.h);
+    cells = DK.sanitizeCells(cells, h);
     if (!cells.length) return { ok: false, error: "置かれている部品が1つも読み込めなかったよ。" };
 
-    var base = DK.sanitizeStageData({ title: raw.title, start: raw.start, cells: cells });
+    var base = DK.sanitizeStageData({ title: raw.title, h: h, start: raw.start, cells: cells, timeLimit: raw.timeLimit });
     var ac = raw.authorClear;
     var authorClear = ac && Number.isInteger(ac.time) && ac.time > 0 && ac.time < 60 * 60 * 60 * 10 && Number.isInteger(ac.deaths) && ac.deaths >= 0
       ? { time: ac.time, deaths: Math.min(ac.deaths, 9999) } : null;
     return {
       ok: true,
-      data: { title: base.title, author: String(raw.author || "").replace(/[\r\n\t]/g, " ").slice(0, 16), start: base.start, cells: base.cells },
+      data: { title: base.title, author: String(raw.author || "").replace(/[\r\n\t]/g, " ").slice(0, 16), h: base.h, start: base.start, cells: base.cells, timeLimit: base.timeLimit },
       authorClear: authorClear, newParts: added
     };
   };

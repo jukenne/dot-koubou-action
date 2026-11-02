@@ -43,6 +43,25 @@ DK.PLAYER_FRAMES_TEXT = {
     ".bb..bb..bb.bb..",
     ".bb..bb..bb.bb..",
     ".ww..ww..ww.ww.."
+  ],
+  // 壁に張り付く（右の壁に手をついている。左の壁のときは反転して描く）
+  cling: [
+    "................",
+    "................",
+    "............yy..",
+    "............yy..",
+    "............b...",
+    "....bbbbbbbbb...",
+    "y.bbbbbbbbbbbbw.",
+    "yybbbbbbbkbbkbb.",
+    "yybbbbbbbkbbkbb.",
+    "ybbbbbbbrbbbbrbw",
+    ".bbwwwwwwwwwwbb.",
+    ".bbwwwwwwwwwwbb.",
+    "..bbbbbbbbbbbb..",
+    "..bb.bb..bb.bb..",
+    "..bb.bb..bb.bb..",
+    "..ww.ww..ww.ww.."
   ]
 };
 

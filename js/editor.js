@@ -9,11 +9,12 @@ window.DK = window.DK || {};
   var T = DK.config.TILE;
   var CANVAS_MAX = 400;    // ドット絵キャンバスの長い辺の最大(px)
   var COLOR_NAMES = ["黒", "白", "赤", "オレンジ", "黄", "緑", "青", "灰"];
-  var EFFECT_NAME = { solid: "足場", deadly: "即死", goal: "ゴール" };
+  var EFFECT_NAME = { solid: "足場", deadly: "即死", goal: "ゴール", push: "押せる" };
   var EFFECT_HELP = {
     solid: "乗れる・ぶつかる足場になるよ（塗ったマスだけが固い）",
     deadly: "触るとミスになるよ（トゲやノコギリ向き）",
-    goal: "触るとクリアになるよ（ゴール旗向き）"
+    goal: "触るとクリアになるよ（ゴール旗向き）",
+    push: "横から押して動かせる箱になるよ（重力で落ちる・積める。トゲは床になる）。動きとくみたては使えないよ"
   };
   var MOTION_NAME = { slide: "往復", rotate: "回転" };
   var MOTION_DEFAULT = {
@@ -618,7 +619,11 @@ window.DK = window.DK || {};
     });
     document.querySelectorAll("input[name=pe-effect]").forEach(function (r) {
       r.addEventListener("change", function () {
-        var p = ensureEditable(); p.effect = r.value; syncControls(); settingsChanged();
+        if (r.value === "push" && (sel.motion.type !== "static" || sel.children.length) &&
+            !window.confirm("「押せる」にすると、動きは静止になって、呼び出した部品は外れるよ。いい？")) { syncControls(); return; }
+        var p = ensureEditable(); p.effect = r.value;
+        if (r.value === "push") { p.motion = { type: "static" }; p.children = []; selChild = -1; renderChildren(); drawCanvas(); }
+        syncControls(); settingsChanged();
       });
     });
     function slider(id, apply) {
@@ -654,6 +659,10 @@ window.DK = window.DK || {};
     $("pe-name").value = sel.name;
     document.querySelectorAll("input[name=pe-motion]").forEach(function (r) { r.checked = r.value === m.type; });
     document.querySelectorAll("input[name=pe-effect]").forEach(function (r) { r.checked = r.value === sel.effect; });
+    var pushing = sel.effect === "push";   // 押せる部品は動き・くみたてが使えない
+    document.querySelectorAll("input[name=pe-motion]").forEach(function (r) { r.disabled = pushing; });
+    document.querySelector("#pe-mode [data-mode=build]").disabled = pushing;
+    if (pushing && mode === "build") setMode("draw");
     $("pe-opt-slide").style.display = m.type === "slide" ? "block" : "none";
     $("pe-opt-rotate").style.display = m.type === "rotate" ? "block" : "none";
     if (m.type === "slide") {
