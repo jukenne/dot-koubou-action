@@ -8,29 +8,29 @@
 </head>
 <body>
 <header id="topbar">
-  <h1 id="app-title">ドット工房アクション</h1>
-  <nav id="tabs">
-    <button data-screen="home">ホーム</button>
-    <button data-screen="parts">部品を作る</button>
-    <button data-screen="stage">ステージを作る</button>
-    <button data-screen="play">あそぶ</button>
-    <button data-screen="multi" id="tab-multi" hidden>みんなで</button>
-  </nav>
+  <button id="back-btn" class="btn back" hidden>◀ <span id="back-label"></span></button>
+  <h1 id="screen-title">メインメニュー</h1>
   <button id="sound-toggle" class="btn" title="効果音のオン・オフ">🔊 音あり</button>
 </header>
 
 <main>
   <section id="screen-home" class="screen">
-    <p class="lead">ドット絵で部品をつくって、ステージに置いて、友達に挑戦してもらおう。</p>
-    <div class="home-buttons">
-      <button class="big" data-go="parts"><span class="big-step">STEP 1</span><span class="big-title">部品を作る</span><span class="big-sub">ドット絵 × 動き × 効果。見本をいじるところから始められるよ</span></button>
-      <button class="big" data-go="stage"><span class="big-step">STEP 2</span><span class="big-title">ステージを作る</span><span class="big-sub">部品を置いて、自分でクリアしよう</span></button>
-      <button class="big" data-go="play"><span class="big-step">STEP 3</span><span class="big-title">あそぶ・共有する</span><span class="big-sub">クリアしたら共有ファイルを書き出して友達へ。もらったファイルはここで開く</span></button>
-    </div>
-    <div class="home-help">
-      <h3>はじめて？ まずは遊んでみよう</h3>
-      <p>「あそぶ」で見本ステージ1「はじめの一歩」が遊べるよ。操作は ← → で移動、Space（または Z・↑）でジャンプ。長押しで高く跳べる。ミスしたらすぐやり直し、R キーで最初から。</p>
-      <p>作ったものは、このブラウザの中に自動で保存されるよ（ブラウザのデータを消すと消えるので、大事なステージは共有ファイルに書き出しておくと安心）。</p>
+    <div class="menu-panel">
+      <div class="menu-head">
+        <canvas id="home-hero" width="64" height="64"></canvas>
+        <h2 class="menu-logo">ドット工房<wbr>アクション</h2>
+      </div>
+      <div class="menu-rows">
+        <button class="menu-row primary" data-go="select" data-tab="tutorial"><span class="mi">▶</span><span class="mt">あそぶ</span><span class="ms">ステージをえらんで遊ぶ。まずは「チュートリアル」から</span></button>
+        <button class="menu-row" data-go="select" data-tab="mine"><span class="mi">🧱</span><span class="mt">ステージをつくる</span><span class="ms">部品を置いて、自分でクリアしたら共有できる</span></button>
+        <button class="menu-row" data-go="parts"><span class="mi">🎨</span><span class="mt">部品をつくる</span><span class="ms">ドット絵 × 動き × 効果。見本をいじるところから</span></button>
+        <button class="menu-row" data-go="multi" id="tab-multi" hidden><span class="mi">👥</span><span class="mt">みんなで あそぶ</span><span class="ms">ひろば・対戦（サーバーに入ったときだけ）</span></button>
+      </div>
+      <details class="menu-help">
+        <summary>はじめて？ 遊び方と保存のこと</summary>
+        <p>操作は ← → / A D で移動、Space / Z / ↑ / W でジャンプ（長押しで高く跳べる）。ミスしたらすぐやり直し、R キーで最初から。プレイ中に TAB キーでメニューが開くよ。</p>
+        <p>作ったものは、このブラウザの中に自動で保存されるよ（ブラウザのデータを消すと消えるので、大事なステージは共有ファイルに書き出しておくと安心）。友達からもらったファイルは、ステージ選択の「友達のステージを開く」から。</p>
+      </details>
     </div>
   </section>
 
@@ -59,28 +59,28 @@
             </div>
             <div class="pe-canvas-wrap"><canvas id="pe-canvas" width="320" height="320"></canvas></div>
 
-            <div id="pe-draw-tools">
-              <p class="hint">塗ったマスが、そのまま当たり判定になるよ</p>
-              <div class="pe-tools" id="pe-tools">
-                <button data-tool="pen" class="btn tool active" title="ペン（1）">ペン</button>
-                <button data-tool="eraser" class="btn tool" title="消しゴム（2）／右クリックでも消せる">消しゴム</button>
-                <button data-tool="fill" class="btn tool" title="塗りつぶし（3）">塗りつぶし</button>
-              </div>
-              <div class="pe-palette" id="pe-palette"></div>
-              <div class="pe-tools">
-                <button id="pe-undo" class="btn" title="元に戻す（Ctrl+Z）">↶ 戻す</button>
-                <button id="pe-redo" class="btn" title="やり直し（Ctrl+Y）">↷ やり直し</button>
-                <button id="pe-flip-h" class="btn" title="左右を反転">左右反転</button>
-                <button id="pe-flip-v" class="btn" title="上下を反転">上下反転</button>
-                <button id="pe-clear" class="btn" title="全部消す">全消し</button>
-              </div>
-            </div>
-
             <div id="pe-build">
               <p class="hint">他の部品を呼び出して、この部品の中に置けるよ。呼び出した部品は自分の動き・効果のまま、この部品の動きに乗って動く。キャンバスの上でドラッグ、または矢印キー（Shiftで8ドット）で動かせる。</p>
               <div id="pe-children"></div>
               <button id="pe-add-child" class="btn primary">＋ 部品を呼び出す</button>
               <div id="pe-picker" class="pe-picker"></div>
+            </div>
+          </div>
+
+          <div id="pe-draw-tools" class="pe-toolcol">
+            <p class="hint">塗ったマスが、そのまま当たり判定になるよ</p>
+            <div class="pe-tools" id="pe-tools">
+              <button data-tool="pen" class="btn tool active" title="ペン（1）">ペン</button>
+              <button data-tool="eraser" class="btn tool" title="消しゴム（2）／右クリックでも消せる">消しゴム</button>
+              <button data-tool="fill" class="btn tool" title="塗りつぶし（3）">塗りつぶし</button>
+            </div>
+            <div class="pe-palette" id="pe-palette"></div>
+            <div class="pe-tools">
+              <button id="pe-undo" class="btn" title="元に戻す（Ctrl+Z）">↶ 戻す</button>
+              <button id="pe-redo" class="btn" title="やり直し（Ctrl+Y）">↷ やり直し</button>
+              <button id="pe-flip-h" class="btn" title="左右を反転">左右反転</button>
+              <button id="pe-flip-v" class="btn" title="上下を反転">上下反転</button>
+              <button id="pe-clear" class="btn" title="全部消す">全消し</button>
             </div>
           </div>
 
@@ -138,84 +138,103 @@
   </section>
 
   <section id="screen-stage" class="screen">
-    <div class="st-bar">
-      <div class="pe-tools" id="st-tools">
-        <button data-stool="place" class="btn tool active" title="部品を置く（1）。ドラッグで連続して置ける">置く</button>
-        <button data-stool="erase" class="btn tool" title="部品を消す（2）。右クリックでも消せる">消す</button>
-        <button data-stool="start" class="btn tool" title="スタート位置を決める（3）">スタート位置</button>
-      </div>
-      <div class="pe-tools">
-        <button id="st-undo" class="btn" title="元に戻す（Ctrl+Z）">↶ 戻す</button>
-        <button id="st-redo" class="btn" title="やり直し（Ctrl+Y）">↷ やり直し</button>
-        <button id="st-sample1" class="btn" title="見本ステージ1「はじめの一歩」を読み込む（いまのステージは置き換わる）">見本1を読み込む</button>
-        <button id="st-sample2" class="btn" title="見本ステージ2「いろいろ部品」を読み込む（いまのステージは置き換わる）">見本2を読み込む</button>
-        <button id="st-sample3" class="btn" title="見本ステージ3「たてのぼり」を読み込む（いまのステージは置き換わる）">見本3を読み込む</button>
-        <button id="st-clear" class="btn danger" title="部品を全部消す">全消し</button>
-      </div>
-      <div class="pe-tools st-right">
-        <span id="st-save" class="hint"></span>
-        <button id="st-test" class="btn primary" title="このステージをすぐ遊んで試す">▶ テストプレイ</button>
-        <button id="st-export" class="btn primary" title="友達に渡すファイルを書き出す">📤 共有ファイルを書き出す</button>
-      </div>
-    </div>
-    <p id="st-status" class="pe-banner"></p>
-    <p id="st-share-note" class="hint"></p>
-    <label class="pe-field st-height-row">ステージの高さ
-      <select id="st-height">
-        <option value="12">低い（1画面ぶん）</option>
-        <option value="24">ふつう（2画面ぶん）</option>
-        <option value="36">高い（3画面ぶん）</option>
-        <option value="48">とても高い（4画面ぶん）</option>
-      </select>
-      <span class="hint">高さを変えても、下の地面は下に残るよ。</span>
-    </label>
-    <div class="st-canvas-wrap"><canvas id="st-canvas"></canvas></div>
-    <p class="hint">青い線が「1画面」の区切り（横20マス・縦12マスごと）。横は4画面ぶん。ホイールで縦、Shift＋ホイールで横にスクロールできるよ。</p>
-    <div class="st-lower">
-      <div class="st-palette-box">
-        <h3>置く部品 <span id="st-sel" class="hint"></span></h3>
-        <div id="st-palette"></div>
-        <p class="hint">部品を増やしたり直したりするのは「部品を作る」で。</p>
-      </div>
-      <div>
-        <label class="pe-field">ステージのなまえ
-          <input id="st-title" type="text" maxlength="24" autocomplete="off" placeholder="なまえなし">
-        </label>
-        <label class="pe-field">つくった人（共有ファイルに入るよ）
-          <input id="st-author" type="text" maxlength="16" autocomplete="off" placeholder="あなたの名前">
-        </label>
-        <div class="pe-field" id="st-limit-box">
-          <span class="pe-label">制限時間</span>
-          <label class="check"><input type="checkbox" id="st-limit-on"><span>時間制限を付ける</span></label>
-          <div class="st-limit-row">
-            <input id="st-limit" type="number" min="5" max="600" step="1" value="60" disabled>
-            <span>秒</span>
+    <div class="st-layout">
+      <div class="st-left">
+        <div class="st-bar">
+          <div class="pe-tools" id="st-tools">
+            <button data-stool="place" class="btn tool active" title="部品を置く（1）。ドラッグで連続して置ける">置く</button>
+            <button data-stool="erase" class="btn tool" title="部品を消す（2）。右クリックでも消せる">消す</button>
+            <button data-stool="start" class="btn tool" title="スタート位置を決める（3）">スタート位置</button>
           </div>
-          <p id="st-limit-note" class="hint"></p>
+          <div class="pe-tools">
+            <button id="st-undo" class="btn" title="元に戻す（Ctrl+Z）">↶ 戻す</button>
+            <button id="st-redo" class="btn" title="やり直し（Ctrl+Y）">↷ やり直し</button>
+            <button id="st-sample1" class="btn" title="見本ステージ1「はじめの一歩」を読み込む（いまのステージは置き換わる）">見本1を読み込む</button>
+            <button id="st-sample2" class="btn" title="見本ステージ2「いろいろ部品」を読み込む（いまのステージは置き換わる）">見本2を読み込む</button>
+            <button id="st-sample3" class="btn" title="見本ステージ3「たてのぼり」を読み込む（いまのステージは置き換わる）">見本3を読み込む</button>
+            <button id="st-clear" class="btn danger" title="部品を全部消す">全消し</button>
+          </div>
+          <div class="pe-tools st-right">
+            <span id="st-save" class="hint"></span>
+            <button id="st-test" class="btn primary" title="このステージをすぐ遊んで試す">▶ テストプレイ</button>
+            <button id="st-export" class="btn primary" title="友達に渡すファイルを書き出す">📤 共有ファイルを書き出す</button>
+          </div>
+        </div>
+        <div class="st-canvas-wrap"><canvas id="st-canvas"></canvas></div>
+        <p class="hint">青い線が「1画面」の区切り（横20マス・縦12マスごと）。横は4画面ぶん。ホイールで縦、Shift＋ホイールで横にスクロールできるよ。</p>
+        <div class="st-fields">
+          <label class="pe-field">ステージのなまえ
+            <input id="st-title" type="text" maxlength="24" autocomplete="off" placeholder="なまえなし">
+          </label>
+          <label class="pe-field">つくった人（共有ファイルに入るよ）
+            <input id="st-author" type="text" maxlength="16" autocomplete="off" placeholder="あなたの名前">
+          </label>
+          <label class="pe-field st-height-row">ステージの高さ
+            <select id="st-height">
+              <option value="12">低い（1画面ぶん）</option>
+              <option value="24">ふつう（2画面ぶん）</option>
+              <option value="36">高い（3画面ぶん）</option>
+              <option value="48">とても高い（4画面ぶん）</option>
+            </select>
+          </label>
+          <div class="pe-field" id="st-limit-box">
+            <span class="pe-label">制限時間</span>
+            <label class="check"><input type="checkbox" id="st-limit-on"><span>時間制限を付ける</span></label>
+            <div class="st-limit-row">
+              <input id="st-limit" type="number" min="5" max="600" step="1" value="60" disabled>
+              <span>秒</span>
+            </div>
+            <p id="st-limit-note" class="hint"></p>
+          </div>
         </div>
       </div>
+      <aside class="st-side">
+        <p id="st-status" class="pe-banner"></p>
+        <p id="st-share-note" class="hint"></p>
+        <div class="st-palette-box">
+          <h3>置く部品 <span id="st-sel" class="hint"></span></h3>
+          <div id="st-palette"></div>
+          <p class="hint">部品を増やしたり直したりするのは「部品を作る」で。高さを変えても、下の地面は下に残るよ。</p>
+        </div>
+      </aside>
     </div>
   </section>
 
+  <section id="screen-select" class="screen">
+    <div class="sel-bar">
+      <div class="sel-tabs" role="tablist">
+        <button class="sel-tab" role="tab" data-seltab="tutorial">チュートリアル</button>
+        <button class="sel-tab" role="tab" data-seltab="mine">作ったステージ</button>
+      </div>
+      <button id="sel-open" class="btn" title="友達からもらったステージのファイルを開いて、すぐ遊ぶ">📂 友達のステージを開く</button>
+      <input id="sel-file" type="file" accept=".json,application/json">
+    </div>
+    <p id="sel-msg" class="pe-banner"></p>
+    <div id="sel-list" class="sel-list"></div>
+  </section>
+
   <section id="screen-play" class="screen">
-    <h2>あそぶ <button id="play-back" class="btn">← ステージ作りにもどる</button>
-      <button id="play-lobby" class="btn" hidden>← ロビーにもどる</button>
+    <div class="play-bar">
+      <button id="play-lobby" class="btn" hidden>◀ ロビーにもどる</button>
       <button id="play-crates" class="btn" hidden title="みんなの画面で、木箱を最初の位置にもどす">📦 木箱をもどす</button>
-      <button id="play-open" class="btn primary" title="友達からもらったステージのファイルを開く">📂 ステージのファイルを開く</button>
-      <input id="play-file" type="file" accept=".json,application/json"></h2>
-    <div class="pe-tools">
-      <span class="hint">見本ステージ：</span>
-      <button class="btn" id="play-sample1" title="走る・ジャンプ・穴・トゲだけのやさしい面">1. はじめの一歩</button>
-      <button class="btn" id="play-sample2" title="動く足場・回転ノコギリなど、いろいろな部品を使った面">2. いろいろ部品</button>
-      <button class="btn" id="play-sample3" title="木箱を押して踏み台にし、壁キックで縦穴を登る縦長の面">3. たてのぼり</button>
     </div>
     <p id="play-msg" class="hint"></p>
     <p id="mp-hud" class="mp-hud" hidden></p>
     <div class="canvas-wrap">
       <canvas id="game" width="960" height="576"></canvas>
       <div id="mp-overlay" class="mp-overlay" hidden></div>
+      <div id="play-menu" class="play-menu" hidden>
+        <div class="dialog">
+          <div class="dialog-head">メニュー</div>
+          <div class="dialog-body">
+            <button id="pm-resume" class="menu-row primary"><span class="mt">つづける</span></button>
+            <button id="pm-giveup" class="menu-row"><span class="mt">あきらめる</span><span class="ms">スタートにもどる</span></button>
+            <button id="pm-leave" class="menu-row"><span class="mt" id="pm-leave-text">ステージ選択に戻る</span></button>
+            <p class="dialog-note">TAB キーでも閉じられるよ</p>
+          </div>
+        </div>
+      </div>
     </div>
-    <p class="todo">操作：← → / A D で移動、Space / Z / ↑ / W でジャンプ（長押しで高く）、R でやり直し　※右端のゴール旗を目指そう</p>
   </section>
 
   <section id="screen-multi" class="screen">
@@ -249,10 +268,12 @@
 <script src="js/parts.js"></script>
 <script src="js/stage.js"></script>
 <script src="js/game.js"></script>
+<script src="js/playmenu.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/share.js"></script>
 <script src="js/stageeditor.js"></script>
 <script src="js/shareui.js"></script>
+<script src="js/select.js"></script>
 <script src="js/net.js"></script>
 <script src="js/cratenet.js"></script>
 <script src="js/multi.js"></script>

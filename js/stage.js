@@ -197,6 +197,8 @@ DK.sanitizeStageData = function (d) {
     cleared = { sig: cl.sig, time: cl.time, deaths: cl.deaths };   // 作者がクリアしたときの印と記録（M6）
   }
   return {
+    id: typeof d.id === "string" && /^[a-z0-9]{1,24}$/.test(d.id) ? d.id : "",
+    updated: Number.isFinite(d.updated) ? d.updated : 0,
     title: String(d.title || "").slice(0, 24),
     author: String(d.author || "").replace(/[\r\n\t]/g, " ").slice(0, 16),
     h: h,
@@ -207,18 +209,67 @@ DK.sanitizeStageData = function (d) {
   };
 };
 
-DK.saveStageData = function (d) {
-  try {
-    localStorage.setItem(DK.STAGE_KEY, JSON.stringify({ title: d.title, author: d.author, h: d.h || DK.config.STAGE_H, start: d.start, cells: d.cells, timeLimit: d.timeLimit || 0, cleared: d.cleared || null }));
-    return true;
-  } catch (e) { return false; }
+// ---- 作ったステージの一覧（このブラウザの localStorage）----
+// 昔は「いま作っている1つ」だけ（dk.stage）だった。いまは一覧（dk.stages）で持ち、ステージ選択画面に並べる。
+DK.STAGES_KEY = "dk.stages";
+DK.STAGES_MAX = 30;
+
+DK.newStageId = function () { return "s" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); };
+
+function stageListRaw() {
+  var raw = null;
+  try { raw = JSON.parse(localStorage.getItem(DK.STAGES_KEY) || "null"); } catch (e) { raw = null; }
+  if (Array.isArray(raw)) return raw;
+  // はじめて：昔の1ステージ版（dk.stage）があれば、一覧の最初の1つとして引き継ぐ（元のデータは消さない）
+  var old = null;
+  try { old = JSON.parse(localStorage.getItem(DK.STAGE_KEY) || "null"); } catch (e) { old = null; }
+  return old ? [Object.assign({ id: DK.newStageId(), updated: Date.now() }, old)] : [];
+}
+
+function writeStageList(list) {
+  try { localStorage.setItem(DK.STAGES_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+}
+
+// 一覧（新しく更新した順）。安全チェック済み
+DK.listStages = function () {
+  var out = [];
+  stageListRaw().forEach(function (r) {
+    var d = DK.sanitizeStageData(r);
+    if (d.id) out.push(d);
+  });
+  return out.sort(function (a, b) { return b.updated - a.updated; });
 };
 
-// 保存されたステージを読む。なければ null
-DK.loadStageData = function () {
-  var raw;
-  try { raw = JSON.parse(localStorage.getItem(DK.STAGE_KEY) || "null"); } catch (e) { raw = null; }
-  return raw ? DK.sanitizeStageData(raw) : null;
+DK.getStage = function (id) {
+  var l = DK.listStages();
+  for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i];
+  return null;
+};
+
+// 保存（id が一覧になければ追加）。成功したら true
+DK.saveStageData = function (d) {
+  if (!d || !d.id) return false;
+  var rec = { id: d.id, updated: Date.now(), title: d.title, author: d.author, h: d.h || DK.config.STAGE_H, start: d.start, cells: d.cells, timeLimit: d.timeLimit || 0, cleared: d.cleared || null };
+  var list = stageListRaw(), found = false;
+  list = list.map(function (r) { if (r && r.id === d.id) { found = true; return rec; } return r; });
+  if (!found) {
+    if (list.length >= DK.STAGES_MAX) return false;
+    list.push(rec);
+  }
+  d.updated = rec.updated;
+  return writeStageList(list);
+};
+
+DK.deleteStage = function (id) {
+  return writeStageList(stageListRaw().filter(function (r) { return r && r.id !== id; }));
+};
+
+// 新しいステージ（地面とゴールだけの、すぐ遊べる土台）
+DK.blankStage = function () {
+  var cells = [];
+  for (var x = 0; x < DK.config.STAGE_W; x++) { cells.push({ x: x, y: 10, partId: "grass" }); cells.push({ x: x, y: 11, partId: "dirt" }); }
+  cells.push({ x: 77, y: 9, partId: "flag" });
+  return { id: DK.newStageId(), updated: Date.now(), title: "", author: "", h: DK.config.STAGE_H, start: { x: 2, y: 9 }, cells: cells, timeLimit: 0, cleared: null };
 };
 
 // 見本ステージ1「はじめの一歩」：走る・ジャンプ・穴・トゲ・階段だけ。ゲームの基本を知るための短くやさしい面

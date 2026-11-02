@@ -217,7 +217,7 @@
     DK.crateNet.begin();
     dropTemp(oldIds);                              // 前のラウンドの部品は、新しいステージに切りかえたあとで消す
     DK.freeze = serverNow() < m.start;
-    $("play-lobby").hidden = true; $("play-crates").hidden = true; $("play-back").style.display = "none";
+    $("play-lobby").hidden = true; $("play-crates").hidden = true;
     $("play-msg").textContent = "対戦：ゴール旗に一番乗りを目指そう！　ぶつかる・頭に乗る・踏みつける・木箱の取り合いもアリ。";
     $("mp-hud").hidden = false;
     clearInterval(matchTimer); matchTimer = setInterval(matchTick, 100); matchTick();

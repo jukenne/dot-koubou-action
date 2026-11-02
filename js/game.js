@@ -357,16 +357,19 @@ window.DK = window.DK || {};
   };
   DK.respawn();
 
-  // ステージ（編集中のデータ {title,start,cells}）を最初から遊ぶ。from="stage" なら「もどる」ボタンを出す
+  // ステージ（編集中のデータ {title,start,cells}）を最初から遊ぶ。
+  //   from : どこから来たか。"stage"＝ステージエディタ（テストプレイ）/ "multi"＝みんなで / それ以外＝ステージ選択画面
+  //          TAB メニューの「もどる」がここへ戻る（DK.playFrom）
   //   opts.onClear(info) : クリアしたときに呼ばれる／ opts.note(info) : クリア画面に出す一行（文字列）
   DK.playStage = function (data, from, opts) {
     DK.playOpts = opts || null;
+    DK.playFrom = from === "stage" || from === "multi" ? from : "select";
+    if (DK.closePlayMenu) DK.closePlayMenu();
     DK.stage = DK.makeStage({ title: data.title, h: data.h, start: { x: data.start.x, y: data.start.y }, cells: data.cells.slice(), timeLimit: data.timeLimit });
     DK.deaths = 0;
     DK.keys = {};
     DK.crates = [];
     DK.respawn();
-    document.getElementById("play-back").style.display = from === "stage" ? "inline-block" : "none";
     DK.showScreen("play");
   };
 
@@ -398,7 +401,7 @@ window.DK = window.DK || {};
   var GAME_KEYS = { ArrowLeft: 1, ArrowRight: 1, ArrowUp: 1, ArrowDown: 1, Space: 1, KeyA: 1, KeyD: 1, KeyW: 1, KeyZ: 1, KeyR: 1 };
   function playActive() { return document.getElementById("screen-play").classList.contains("active"); }
   window.addEventListener("keydown", function (e) {
-    if (!GAME_KEYS[e.code] || !playActive()) return;
+    if (DK.menuOpen || !GAME_KEYS[e.code] || !playActive()) return;     // TAB メニューを開いている間は、ゲームの操作を受け付けない
     e.preventDefault();
     if (document.activeElement && document.activeElement.blur && document.activeElement !== document.body) document.activeElement.blur();   // スペースでボタンが押されないように
     DK.keys[e.code] = true;
@@ -689,6 +692,13 @@ window.DK = window.DK || {};
       ctx.strokeText(formatTime(shown), 946, 28); ctx.fillText(formatTime(shown), 946, 28);
     }
 
+    if (DK.mode === "play" && DK.time < 300) {      // 始めの5秒だけ、メニューの出し方をそっと見せる（遊びの邪魔にならないよう小さく・薄く）
+      ctx.globalAlpha = Math.min(0.7, (300 - DK.time) / 60);
+      ctx.textAlign = "right"; ctx.lineWidth = 4; ctx.fillStyle = "#f4f4f4";
+      ctx.strokeText("TAB：メニュー", 946, 560); ctx.fillText("TAB：メニュー", 946, 560);
+      ctx.globalAlpha = 1;
+    }
+
     if (DK.mode === "dead") {
       drawCenterText(ctx, [{ text: DK.missReason === "time" ? "時間切れ！" : "ミス！", size: 48, y: 280 }], "#e63946");
     } else if (DK.mode === "clear") {
@@ -696,7 +706,7 @@ window.DK = window.DK || {};
       drawCenterText(ctx, [
         { text: "クリア！", size: 48, y: 230, color: "#ffd166" },
         { text: "タイム " + formatTime(DK.clearInfo.time) + "　失敗 " + DK.clearInfo.deaths + "回", size: 32, y: 290, color: "#f4f4f4" },
-        { text: DK.noRestart ? "みんなのゴールを待っているよ" : "R キーでもう一度", size: 16, y: 340, color: "#a9b0cc" }
+        { text: DK.noRestart ? "みんなのゴールを待っているよ" : "R キーでもう一度　　TAB キーでメニュー", size: 16, y: 340, color: "#a9b0cc" }
       ].concat(DK.playOpts && DK.playOpts.note ? [{ text: DK.playOpts.note(DK.clearInfo), size: 16, y: 392, color: "#52b788" }] : []), "#f4f4f4");
     }
   };
@@ -706,7 +716,7 @@ window.DK = window.DK || {};
   DK.paused = false;   // 検証用
   function frame(t) {
     requestAnimationFrame(frame);
-    if (!playActive() || DK.paused) { last = t; return; }
+    if (!playActive() || DK.paused || DK.menuPause) { last = t; return; }
     acc += Math.min(t - last, 100);
     last = t;
     while (acc >= STEP) { DK.update(); acc -= STEP; }

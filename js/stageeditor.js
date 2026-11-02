@@ -375,10 +375,9 @@ window.DK = window.DK || {};
       $("st-save").textContent = "書き出したよ（ダウンロードのフォルダを見てね）";
     });
     $("st-author").addEventListener("input", function () { cur.author = this.value.slice(0, 16); scheduleSave(); });
-    $("play-back").addEventListener("click", function () { DK.showScreen("stage"); });
 
     document.addEventListener("keydown", function (e) {
-      if (!active()) return;
+      if (!active() || !cur) return;
       var t = e.target && e.target.tagName;
       if (t === "INPUT" || t === "TEXTAREA") return;
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
@@ -393,7 +392,7 @@ window.DK = window.DK || {};
     });
 
     // 画面が開かれるたびに、部品の増減（削除・名前・絵の変更）を反映する
-    new MutationObserver(function () { if (active()) refresh(); })
+    new MutationObserver(function () { if (active() && cur) refresh(); })
       .observe($("screen-stage"), { attributes: true, attributeFilter: ["class"] });
   }
 
@@ -406,17 +405,25 @@ window.DK = window.DK || {};
     if (cur.cells.length !== before) scheduleSave();
   }
 
-  function init() {
-    var saved = DK.loadStageData();
-    if (saved) cur = saved;
-    else { var s = DK.sampleStage(); cur = { title: "", author: "", h: s.h, start: s.start, cells: s.cells, timeLimit: 0, cleared: null }; }
+  // 一覧から1つ選んで編集を始める（いま編集中のものは先に保存する）。id が空なら新しいステージを作る
+  function open(id) {
+    if (cur) { clearTimeout(saveTimer); DK.saveStageData(cur); }
+    var d = id ? DK.getStage(id) : null;
+    if (!d) { d = DK.blankStage(); DK.saveStageData(d); }
+    cur = d;
+    history = []; redoStack = [];
     $("st-title").value = cur.title;
     $("st-author").value = cur.author || "";
+    $("st-save").textContent = "";
     syncHeight();
-    bindCanvas(); bindUI();
     renderPalette(); updateUndo(); draw(); renderStatus();
+    return cur.id;
   }
 
-  DK.stageEditor = { current: function () { return cur; }, refresh: refresh };
+  function init() {
+    bindCanvas(); bindUI();
+  }
+
+  DK.stageEditor = { current: function () { return cur; }, refresh: refresh, open: open };
   window.addEventListener("DOMContentLoaded", init);
 })();
